@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "gateflow project config",
+  "type": "object",
+  "required": ["version", "vcs", "planning", "peRoster"],
+  "properties": {
+    "version": { "const": 1 },
+    "vcs": {
+      "type": "object",
+      "required": ["backend", "settings"],
+      "properties": {
+        "backend": { "type": "string", "enum": ["github"] },
+        "settings": {
+          "type": "object",
+          "required": ["owner", "repo"],
+          "properties": {
+            "owner": { "type": "string" },
+            "repo": { "type": "string" },
+            "defaultBaseBranch": { "type": "string", "default": "main" }
+          }
+        }
+      }
+    },
+    "planning": {
+      "type": "object",
+      "required": ["backend", "settings"],
+      "properties": {
+        "backend": { "type": "string", "enum": ["jira"] },
+        "settings": {
+          "type": "object",
+          "required": ["site", "projectKey"],
+          "properties": {
+            "site": { "type": "string", "description": "e.g. yoursite.atlassian.net" },
+            "projectKey": { "type": "string" },
+            "testPlanSource": {
+              "type": "string",
+              "default": "description-heading:Test Plan",
+              "description": "Where scenario/test-plan text lives on a ticket. Confirm during setup."
+            }
+          }
+        }
+      }
+    },
+    "sddPersistence": {
+      "type": "string",
+      "enum": ["engram", "openspec", "hybrid"],
+      "description": "Must match the mode this project's /sdd-init chose, so gateflow-plan reads artifacts from the right place."
+    },
+    "contentLanguage": {
+      "type": "string",
+      "default": "en",
+      "description": "Language for content this project's END USERS or stakeholders would read: Jira ticket summaries/descriptions created by gateflow-plan, proposal.md/spec.md/tasks.md (they feed tickets verbatim, no translation step), and product-facing docs from gateflow-docs. Independent of everything else in this file — code, comments, commits, branch names, config keys, and design.md (pure technical reasoning, never quoted into a ticket) are ALWAYS English regardless of this value. Free-form (e.g. \"es\", \"en\", \"pt\") — not an enum, gateflow doesn't validate the target language, it only tells you/Claude which one to author in."
+    },
+    "peRoster": {
+      "type": "object",
+      "required": ["fallback", "pathRules"],
+      "properties": {
+        "fallback": { "type": "string", "default": "pe-general" },
+        "pathRules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["pattern", "agent"],
+            "properties": {
+              "pattern": { "type": "string" },
+              "agent": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "reviewers": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "Plain GitHub usernames. Empty by default (solo project) — used automatically by gateflow-ship iff non-empty."
+    },
+    "jiraStatusCandidates": {
+      "type": "object",
+      "required": ["activeWork", "inReview", "done"],
+      "properties": {
+        "activeWork": { "type": "array", "items": { "type": "string" } },
+        "inReview": { "type": "array", "items": { "type": "string" } },
+        "done": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "tierClassifier": {
+      "type": "object",
+      "properties": {
+        "trivialMaxFiles": { "type": "integer", "default": 3 },
+        "trivialMaxLines": { "type": "integer", "default": 30 },
+        "standardMaxFiles": { "type": "integer", "default": 15 },
+        "standardMaxLines": { "type": "integer", "default": 300 },
+        "deepPathPatterns": { "type": "array", "items": { "type": "string" } },
+        "ignorePathPatterns": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

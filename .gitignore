@@ -1,0 +1,18 @@
+# OS / editor cruft
+.DS_Store
+*.swp
+.vscode/
+.idea/
+
+# Secrets — this repo's scripts never touch tokens directly (gh/acli own their
+# own credential stores), but keep the door shut if that ever changes
+.env
+.env.*
+!.env.example
+
+# Local scratch from running the e2e checklist against a real toy project
+/test/scratch/
+*.local.json
+
+# Claude Code plugin-local state, not part of this project
+.token-optimizer/
