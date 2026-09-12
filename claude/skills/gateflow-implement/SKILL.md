@@ -34,7 +34,7 @@ if `git status --porcelain` is non-empty:
 
 base = config.vcs.settings.defaultBaseBranch, else planning-jira.sh default-branch result
 git checkout base && git pull --ff-only origin base
-slug = lowercase(ticket.summary) -> [a-z0-9]+ joined by '-', capped at 60 chars
+slug = lowercase(ticket.summary) -> [a-z0-9]+ joined by '-', capped at 8 words
 branch = "{key}-{slug}"
 git checkout -b branch
 
@@ -71,6 +71,9 @@ for each behavior in the plan:
 
 commit each logical unit separately:
   message = "<type>: {key} <description>"   # feat|fix|chore|docs|refactor|test
+  exactly one line — subject only, no body, no footers, ever. If the change needs more explanation
+  than one line can hold, that explanation belongs in the PR description (gateflow-ship), not the
+  commit message.
   never batch unrelated behaviors into one commit
 
 before EVERY commit: run build + lint + test for the touched packages.
