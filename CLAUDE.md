@@ -13,6 +13,18 @@ thing. If it's unclear whether something rises to that level, ask rather than si
 future session — looking at just the repo (a fresh clone, another machine). A decision that only lives
 in chat history is a decision that gets re-litigated from scratch the next time it comes up.
 
+## Dogfooding rule
+
+`fastender` is gateflow's own guinea-pig project — real usage, not a test fixture. Whenever something
+goes wrong there and it's unclear whether gateflow (a skill, an adapter script) is at fault vs. `acli`,
+Jira, or user error — log it in `BUGS.md` the moment it's found, before diagnosing further. Don't wait
+for certainty about root cause; an unresolved "here's exactly what I observed" entry is more useful
+than a bug that only exists in that session's chat history and gets forgotten.
+
+**Why**: same reasoning as the deferred-work rule above — a finding that only lives in engram or chat
+history is invisible to a fresh session or another machine, and gets silently re-discovered (or missed)
+next time.
+
 ## Security posture — deliberate, not incidental
 
 Grounded in current agentic-AI security guidance (OWASP Top 10 for Agentic Applications 2026, OWASP Top
