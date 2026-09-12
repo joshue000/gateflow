@@ -56,7 +56,12 @@ case "$op" in
       exit 0
     fi
 
-    mapfile -t candidates < <(jq -r ".jiraStatusCandidates.${target}[]" "$CONFIG")
+    # Portable read loop, not `mapfile` — macOS ships bash 3.2 by default (GPLv3 licensing means
+    # Apple never updates it), and `mapfile` is bash-4+ only. This must keep working there.
+    candidates=()
+    while IFS= read -r line; do
+      candidates+=("$line")
+    done < <(jq -r ".jiraStatusCandidates.${target}[]" "$CONFIG")
     [ "${#candidates[@]}" -gt 0 ] || die "no jiraStatusCandidates.$target configured in $CONFIG"
 
     for name in "${candidates[@]}"; do
