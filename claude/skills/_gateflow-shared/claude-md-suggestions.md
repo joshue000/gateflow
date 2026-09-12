@@ -48,3 +48,11 @@ consistently instead of reinventing error responses per route.
 Inject null/local implementations for cloud dependencies (queues, object storage, external services)
 automatically in local/test environments, so tests and local runs never need real cloud credentials to
 pass.
+
+### `openapi-single-source` — tags: `backend`
+
+API documentation and manual-testing collections are never hand-maintained as a second artifact.
+Generate an OpenAPI spec from the code itself (e.g. `@nestjs/swagger` decorators on controllers/DTOs,
+or the framework's equivalent) and serve it live. A tool like Postman imports that spec directly
+(Import → Link/file) instead of a separately maintained Postman collection JSON — two sources
+describing the same endpoints drift the moment one changes and the other doesn't.
