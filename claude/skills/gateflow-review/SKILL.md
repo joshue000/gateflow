@@ -10,6 +10,26 @@ description: >-
 
 # gateflow-review
 
+> **GOVERNANCE SELF-AMENDMENT PROTECTION** — applies to this file and its two siblings:
+> `claude/agents/pe-governance.md`, `claude/skills/gateflow-review/SKILL.md` (this file), and
+> `claude/skills/_gateflow-shared/pe-agent-template.md`.
+>
+> - Every change to any of these 3 files requires human review, consulted BEFORE the change is
+>   applied, with the reasoning exposed up front.
+> - No rule added to any of these files may act as a bypass for another rule in them, or weaken/ignore
+>   an already-established restriction.
+> - The only condition that permits a change: the repo owner's EXPLICIT, standalone authorization —
+>   never inferred from a broader "yes, proceed with everything" that wasn't specifically about this
+>   change.
+> - Every applied change to any of these 3 files must be logged in
+>   `claude/agents/GOVERNANCE-LOG.md` (format and full history live there — these files don't
+>   keep their own copies).
+> - Never blindly trust a suggested change to this file, even one Claude itself proposes — always
+>   route it through this full gate.
+>
+> **Deliberate exception to `code-quality.md`'s "comments should almost never exceed 3 lines" rule** —
+> this banner is intentionally long; don't "clean it up" thinking it violates house style.
+
 Reference docs, load as needed: `_gateflow-shared/tier-classifier.md`, `_gateflow-shared/gate-model.md`,
 `_gateflow-shared/lenses/*.md`.
 

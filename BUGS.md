@@ -69,6 +69,65 @@ happened when one did (or vice versa).
 **Status**: unresolved, low priority unless it starts affecting `transition-to`'s actual candidate-list
 fallback logic (not just its status message).
 
+### `ensure-account` hard-requires `.gateflow/config.json` before gateflow-init ever writes one
+
+**Where found**: fresh project, `gateflow-init` Phase 2, 2026-09-13.
+
+**Symptom**: Running `bash claude/skills/_gateflow-shared/adapters/planning-jira.sh ensure-account
+<site>` per `gateflow-init/SKILL.md`'s Phase 2 pseudocode fails immediately with `planning-jira: no
+.gateflow/config.json in the current project — see config-schema.md` (exit 1) — even though a site is
+passed directly on the command line. `.gateflow/config.json` isn't written until Phase 8, six phases
+later, so Phase 2 as documented can never succeed on a fresh project.
+
+**Root cause**: two compounding bugs, not one.
+1. `planning-jira.sh` line 13-14 gates every op — including `ensure-account` — on
+   `.gateflow/config.json` existing, before the op switch runs.
+2. `ensure_account()` never reads its own `$1`. `planning-adapter-contract.md` documents
+   `ensure-account | <expectedSite>` — a site argument — but the implementation ignores it and instead
+   reads `expected_site` unconditionally from the config file (`jq -r '.planning.settings.site'
+   "$CONFIG"`, line 16). The CLI argument gateflow-init passes is silently discarded.
+
+`gateflow-init/SKILL.md` Phase 2/Phase 8 and `config-schema.md` were all re-checked: no phase writes a
+partial/minimal config before Phase 8, and no doc describes an intended bootstrap sequence. This is a
+genuine ordering bug, not a documented-but-missed step.
+
+**Workaround used**: manually wrote a minimal `.gateflow/config.json` containing just
+`{"planning":{"settings":{"site":"<site>"}}}` before Phase 2, matching exactly the one field
+`ensure_account()` actually reads. Phase 8 later overwrites the file wholesale with the full object, so
+the partial content is safe to leave in place in the meantime.
+
+**To fix properly**: either (a) `planning-jira.sh`'s `ensure-account` case should use `$1` when passed,
+skipping the config-file read entirely for that op (matching `planning-adapter-contract.md`'s
+documented `<expectedSite>` signature), or (b) `gateflow-init/SKILL.md` Phase 2 should write a minimal
+`{vcs, planning}` config before calling `ensure-account`, with Phase 8 doing a full overwrite as
+already documented. (a) is preferable — it fixes the contract mismatch at the source and lets
+`ensure-account` be called standalone from outside any gateflow project, which the contract's argument
+signature implies was the original intent.
+
+**Status**: unresolved, blocks `gateflow-init` Phase 2 on every fresh project until fixed.
+
+### `create-ticket`'s `--description-file` rejects an empty file
+
+**Where found**: `gateflow-init` Phase 6, 2026-09-13, creating the throwaway status-verification ticket.
+
+**Symptom**: `gateflow-init/SKILL.md` Phase 6's pseudocode calls
+`create-ticket --type Task --summary "..." --description-file <empty tmpfile>` — but passing a truly
+empty file fails with `✗ Error: The field value is not valid Atlassian Document Format (ADF) content.`
+A file containing at least one line of plain text succeeds and converts to ADF fine.
+
+**Root cause**: not fully diagnosed — likely `acli`'s plain-text-to-ADF conversion (or Jira's API
+validation of the resulting ADF document) rejects an empty `doc` node. Not reproduced against other
+`acli` commands/fields, only `create-ticket`'s `--description-file` path.
+
+**Workaround used**: wrote one line of placeholder text ("Throwaway ticket for gateflow-init status
+verification. Safe to delete.") instead of an empty file — succeeded immediately.
+
+**To fix properly**: update `gateflow-init/SKILL.md` Phase 6's pseudocode to specify writing a
+one-line placeholder description instead of literally "empty tmpfile" — cheap, low-risk fix, no
+adapter script change needed.
+
+**Status**: resolved via workaround; the SKILL.md wording itself still needs the one-line doc fix.
+
 ## Resolved
 
 ### `transition-to` crashed with "mapfile: command not found" on macOS's default bash
