@@ -24,6 +24,7 @@
       { "pattern": "**/SKILL.md", "agent": "pe-governance" },
       { "pattern": "**/agents/*.md", "agent": "pe-governance" },
       { "pattern": "**/commands/*.md", "agent": "pe-governance" },
+      { "pattern": "**/pe-agent-template.md", "agent": "pe-governance" },
       { "pattern": "CLAUDE.md", "agent": "pe-governance" }
     ]
   },
