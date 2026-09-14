@@ -166,38 +166,6 @@ adapter script change needed.
 **Status**: workaround applied and in use; SKILL.md's Phase 6 pseudocode still needs the
 one-line-placeholder doc fix before this can move to Resolved.
 
-### CRITICAL: self-amendment `ask` gate doesn't reliably enforce at all under `defaultMode: auto` — not just a Bash coverage gap
-
-**Where found**: gateflow (this repo), gateflow-review round 1, 2026-09-14 (Bash-coverage gap first
-found); confirmed broader and more severe via a live test, 2026-09-14, this session (after a restart,
-testing the shipped GTF-3 protection directly).
-
-**Symptom / Root cause**: originally scoped as "Bash isn't covered" — `.claude/settings.json`'s
-`permissions.ask` array only lists `Edit(...)` rules for the 5 self-amendment-protected files, so a
-write via `Bash` (shell redirection, `tee`, `sed -i`) never triggers the gate at all. Live-testing
-revealed it's worse than that: a direct `Edit` call against `claude/agents/pe-governance.md` — a path
-*explicitly listed* in `ask` — completed with zero prompt or pause, to either the model or the user.
-Root cause: `~/.claude/settings.json` has `permissions.defaultMode: "auto"`, and in that mode a
-classifier reviews every action *in place of* the human — it does not surface the configured `ask`
-rule as a prompt, it substitutes its own judgment. In the same test, an unrelated `Bash` command
-touching the same file WAS blocked, but by the classifier's own "[Self-Modification]" heuristic, not by
-the `ask` list — proving the `ask` list itself isn't what's deciding either outcome. Recorded as a
-verified finding in the project wiki (`wiki_write`, 2026-09-14) with the full reproduction.
-
-**Impact**: the self-amendment protection shipped in GTF-3 does not reliably function as documented for
-this repo owner's own default permission mode (`auto`). This is not a hardening nice-to-have — the
-protection is effectively decorative under `auto` mode as currently implemented.
-
-**To fix properly**: a `PreToolUse` hook inspecting `Edit`/`Write`/`Bash`/`MultiEdit`/`NotebookEdit`
-calls against the 5 protected paths. Hooks are enforced by the Claude Code harness itself, before the
-tool call proceeds — independent of permission mode — unlike `permissions.ask`, which is mediated by
-the (mode-dependent) classifier and demonstrably bypassable under `auto`. This is the only mechanism
-that reliably forces human-in-the-loop regardless of mode.
-
-**Status**: unresolved, tracked as backlog. Severity upgraded from the original Bash-only framing —
-being filed as its own Jira ticket given the scope change (the fix is "implement a hook," not "also add
-Bash to the ask list").
-
 ### gateflow-ship's SHA-match check is unsatisfiable when the review file itself gets committed
 
 **Where found**: gateflow (this repo), gateflow-ship Phase 1 preflight, 2026-09-14, shipping GTF-3.
@@ -285,3 +253,37 @@ Deleted the throwaway ticket after.
 `readarray`, `declare -A`, `${var,,}`/`${var^^}` case conversion) — none found elsewhere. This one
 hid for a while simply because its buggy line wasn't on the common path (the `already-there`
 early-return almost always fired first).
+
+### CRITICAL: self-amendment `ask` gate doesn't reliably enforce at all under `defaultMode: auto` — not just a Bash coverage gap
+
+**Where found**: gateflow (this repo), gateflow-review round 1, 2026-09-14 (Bash-coverage gap first
+found); confirmed broader and more severe via a live test, 2026-09-14, this session (after a restart,
+testing the shipped GTF-3 protection directly).
+
+**Symptom / Root cause**: originally scoped as "Bash isn't covered" — `.claude/settings.json`'s
+`permissions.ask` array only lists `Edit(...)` rules for the 5 self-amendment-protected files, so a
+write via `Bash` (shell redirection, `tee`, `sed -i`) never triggers the gate at all. Live-testing
+revealed it's worse than that: a direct `Edit` call against `claude/agents/pe-governance.md` — a path
+*explicitly listed* in `ask` — completed with zero prompt or pause, to either the model or the user.
+Root cause: `~/.claude/settings.json` has `permissions.defaultMode: "auto"`, and in that mode a
+classifier reviews every action *in place of* the human — it does not surface the configured `ask`
+rule as a prompt, it substitutes its own judgment.
+
+**Impact**: the self-amendment protection shipped in GTF-3 did not reliably function as documented for
+this repo owner's own default permission mode (`auto`) — effectively decorative under `auto` mode as
+originally implemented.
+
+**Fix**: GTF-21 — a `PreToolUse` hook (`.claude/hooks/protect-self-amendment.sh`) inspecting
+`Edit`/`Write`/`Bash`/`MultiEdit`/`NotebookEdit` calls against the 5 protected paths, wired into
+`.claude/settings.json`'s new `hooks.PreToolUse` entry. Hooks are enforced by the Claude Code harness
+itself, before the tool call proceeds — independent of permission mode — unlike `permissions.ask`,
+which this bug proved is bypassable under `auto`. `permissions.ask` was kept as a defense-in-depth
+fallback, unchanged. Implemented TDD (8 test cases in `.claude/hooks/test-protect-self-amendment.sh`,
+red before the hook script existed, green after).
+
+**Verified**: 2026-09-14 18:48 -05, live re-test of the exact original reproduction — a direct `Edit`
+call against `claude/agents/pe-governance.md`, no prior authorization — correctly blocked, error citing
+`CLAUDE.md` and `GOVERNANCE-LOG.md`. The 8/8 automated test suite also passes. Commits: `3034161`
+(tests), `1b2f392` (hook), `5421826` (wiring), `fd20f25` (governance log entry).
+
+**Status**: resolved.
