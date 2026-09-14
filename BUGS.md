@@ -9,6 +9,41 @@ removing it).
 
 ## Open
 
+### `gateflow-review`'s current SKILL.md has no non-committed persistence option, which is self-contradictory for the exact ticket that removes committed review docs
+
+**Where found**: `fastender`, delivering FTE-29 (removing the committed `docs/gateflow/plans/*.md` /
+`docs/gateflow/reviews/*.md` convention, backfilling the old content as Jira/PR comments instead),
+2026-09-14.
+
+**Symptom**: `gateflow-review/SKILL.md`'s Phase 7 only knows one persistence path — append the round to
+`docs/gateflow/reviews/{name}-review.md` and commit it (PR-comment mirroring is a best-effort bonus on
+top, not a substitute). Running the documented procedure literally on FTE-29's own diff would have
+created a brand-new committed review file in the same commit range whose entire purpose is deleting all
+the other committed review files — self-contradictory, and it would immediately need its own follow-up
+cleanup.
+
+**Root cause**: `gateflow-review`/`gateflow-implement`/`gateflow-ship`'s SKILL.md files have not yet
+been updated for the plan-as-Jira-comment / review-as-PR-comment design (feature request handed to the
+`gateflow-fb` session earlier this session, plain-text prompt, not yet confirmed landed — checked via
+`rg` against the installed SKILL.md files before starting FTE-29: no `add-comment`/persistence-design
+references in `gateflow-implement/SKILL.md` or `gateflow-ship/SKILL.md`, `gateflow-review/SKILL.md`
+still only does the local-file-plus-PR-comment-mirror flow). `planning-jira.sh` already has the
+`add-comment` op needed for the new design (pre-existing, not added for this).
+
+**Workaround used**: for FTE-29 only, manually applied the target design ahead of gateflow adopting it:
+ran the review (pe-general + tech-writer Round 1, pe-general lock-confirmation Round 2, both clean,
+2 consecutive clean rounds at the same SHA → Gate 1 locked) entirely in-session without ever writing a
+`docs/gateflow/reviews/FTE-29-review.md` file to disk or committing one. Gate-1-lock bookkeeping (2
+consecutive clean rounds, same HEAD SHA) was tracked in conversation instead of in a persisted file.
+
+**To fix properly**: once the plan-as-Jira-comment/review-as-PR-comment feature lands in
+`gateflow-implement`/`gateflow-review`/`gateflow-ship`'s SKILL.md files, this stops being a workaround
+and becomes the documented default — no separate fix needed here beyond that feature landing.
+
+**Status**: unresolved, blocked on the pending feature request (tracked separately, not in this file —
+see the `gateflow-fb` session/conversation for the drafted prompt). Not re-logging the feature request
+itself here since it's a design decision already made and handed off, not an anomaly of unclear cause.
+
 ### Batch-created Jira tickets can have summary/description desynced by one item
 
 **Where found**: `fastender`, `gateflow-plan create-from-sdd inventario-mvp`, 2026-09-07.
