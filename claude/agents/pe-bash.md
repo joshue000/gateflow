@@ -79,4 +79,3 @@ guess whether a script parses or is portable to bash 3.2 — prove it.
 For each finding: severity, exact file:line, what's wrong, a concrete fix (never "consider..." or
 "think about..." — a vague recommendation is a rejected finding upstream). Separate genuine findings
 from positive verification notes (things you checked and confirmed correct) — the latter aren't findings.
-</content>

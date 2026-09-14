@@ -67,6 +67,7 @@ This repo's own SDLC likewise runs through gateflow's skills (`/gateflow-impleme
 `/gateflow-review`, `/gateflow-ship`, `/gateflow-plan`, `/gateflow-docs`), dogfooded on gateflow itself
 per `.gateflow/config.json`. The review gate model is enforced in `gateflow-review/SKILL.md`, one of
 the 5 self-amendment-protected files above. Branch naming and commit format are enforced in
-`gateflow-implement/SKILL.md` and `gateflow-ship/SKILL.md` — ordinary review-gated files, not under the
-stricter governance gate. Any change to the self-amendment-protected enforcement logic goes through the
-protection above, not a prose edit in this section.
+`gateflow-implement/SKILL.md`; `gateflow-ship/SKILL.md` reads the resulting branch/commit as-is
+(branch-key regex, first-commit-subject PR title) rather than enforcing them. Both are ordinary
+review-gated files, not under the stricter governance gate. Any change to the self-amendment-protected
+enforcement logic goes through the protection above, not a prose edit in this section.

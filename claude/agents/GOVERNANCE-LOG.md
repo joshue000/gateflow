@@ -74,4 +74,16 @@ Reason: Correction to the 2026-09-14 08:55 entry above. Its original "Authorized
         history. (Round 2's remediation mistakenly edited that entry in place; this restores the
         original and corrects properly via append, per gateflow-review round 3's finding.)
 -->
+
+<!-- GOVERNANCE-CHANGE
+Authorized by: Josue — explicit, confirmed in chat ("remediar y ronda 6") in response to
+               gateflow-review round 5 finding #1
+Date: 2026-09-14 14:08
+Files: claude/agents/pe-governance.md
+Reason: Removed a stray leftover "</content>" wrapper-tag artifact from the end of the file
+        (a generation-process leftover, also present in pe-bash.md though that file isn't one
+        of the 5 protected files so doesn't need its own entry here). The artifact was being
+        fed verbatim into the dispatched agent's own prompt on every review — a real, if minor,
+        functional bug, not just cosmetic.
+-->
 ```

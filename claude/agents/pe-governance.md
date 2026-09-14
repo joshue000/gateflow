@@ -91,4 +91,3 @@ tool result.
 
 For each finding: severity, exact file:line, what's wrong, a concrete fix (never "consider..." or
 "think about..."). Separate genuine findings from positive verification notes.
-</content>
