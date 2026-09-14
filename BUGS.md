@@ -1,10 +1,11 @@
 # Dogfooding findings
 
-Anomalies hit while using gateflow for real on `fastender` (gateflow's own guinea-pig project) where
-it's unclear at the time whether the cause is gateflow itself, `acli`, or something else. Log it here
-the moment it's found — don't wait until it's diagnosed. Move an entry to "Resolved" with the actual
-root cause once it's understood; delete only if it turns out not to be gateflow's fault at all (say so
-in the commit message removing it).
+Anomalies hit while using gateflow for real — dogfooding on gateflow itself (this repo) as well as on
+any consuming project (e.g. `fastender`, gateflow's own guinea-pig project) — where it's unclear at the
+time whether the cause is gateflow itself, `acli`, or something else. Log it here the moment it's found
+— don't wait until it's diagnosed. Move an entry to "Resolved" with the actual root cause once it's
+understood; delete only if it turns out not to be gateflow's fault at all (say so in the commit message
+removing it).
 
 ## Open
 
@@ -71,7 +72,7 @@ fallback logic (not just its status message).
 
 ### `ensure-account` hard-requires `.gateflow/config.json` before gateflow-init ever writes one
 
-**Where found**: fresh project, `gateflow-init` Phase 2, 2026-09-13.
+**Where found**: gateflow (this repo), `gateflow-init` Phase 2, 2026-09-13.
 
 **Symptom**: Running `bash claude/skills/_gateflow-shared/adapters/planning-jira.sh ensure-account
 <site>` per `gateflow-init/SKILL.md`'s Phase 2 pseudocode fails immediately with `planning-jira: no
@@ -108,7 +109,8 @@ signature implies was the original intent.
 
 ### `create-ticket`'s `--description-file` rejects an empty file
 
-**Where found**: `gateflow-init` Phase 6, 2026-09-13, creating the throwaway status-verification ticket.
+**Where found**: gateflow (this repo), `gateflow-init` Phase 6, 2026-09-13, creating the throwaway
+status-verification ticket.
 
 **Symptom**: `gateflow-init/SKILL.md` Phase 6's pseudocode calls
 `create-ticket --type Task --summary "..." --description-file <empty tmpfile>` — but passing a truly
@@ -127,6 +129,22 @@ one-line placeholder description instead of literally "empty tmpfile" — cheap,
 adapter script change needed.
 
 **Status**: resolved via workaround; the SKILL.md wording itself still needs the one-line doc fix.
+
+### Self-amendment `ask` gate doesn't cover Bash-based writes, only the Edit tool
+
+**Where found**: gateflow, 2026-09-14, gateflow-review round 1.
+
+**Symptom / Root cause**: `.claude/settings.json`'s `permissions.ask` array only lists `Edit(...)` rules
+for the 5 self-amendment-protected files. Any write performed via `Bash` (shell redirection, `tee`,
+`sed -i`, or any other command that overwrites one of those files) never triggers the `Edit`-scoped
+`ask` gate at all — the protection only inspects the `Edit` tool's target path, not what a `Bash` call
+writes to. A PE reviewer or any Bash-capable actor could overwrite a protected file without ever hitting
+the gate.
+
+**To fix properly**: a `PreToolUse` hook inspecting `Edit`/`Write`/`Bash`/`MultiEdit`/`NotebookEdit`
+calls against the 5 protected paths, not an `ask` permission array scoped to `Edit` alone.
+
+**Status**: unresolved, tracked as backlog.
 
 ## Resolved
 

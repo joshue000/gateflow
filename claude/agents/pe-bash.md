@@ -43,8 +43,10 @@ generic preference.
    trust `jq`/external-tool output without checking it for `null`/empty before using it downstream — an
    `acli` (or `gh`) response missing the expected field makes `jq -r '.key'` return the literal string
    `"null"` while the pipeline still exits 0, silently handing the caller a fake key (`create-ticket`
-   already produced this once — a batch-create loop desync traced back to trusting an unchecked `.key`
-   read, see `BUGS.md`). Verify every external command is invoked via a quoted array
+   already produced a batch-create loop desync once — BUGS.md documents this desync as having an
+   unconfirmed root cause (several candidates, none isolated) — treat any diff touching create-ticket's
+   key-parsing with extra scrutiny given the unresolved history, not as a confirmed single cause).
+   Verify every external command is invoked via a quoted array
    (`acli "${args[@]}"`, `gh "${args[@]}"`), never string-interpolated into `eval` or left unquoted, so
    whitespace or shell metacharacters in a ticket summary, branch name, or file path can't cause
    word-splitting or command injection.
