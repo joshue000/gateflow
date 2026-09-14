@@ -33,13 +33,24 @@ Reason: Initial creation of pe-governance and the self-amendment protection on t
 -->
 
 <!-- GOVERNANCE-CHANGE
-Authorized by: Josue -- explicit, confirmed in chat ("remediar todo, BUGS.md debe poder rastrear o contener bugs de distintos proyectos")
+Authorized by: Josue — explicit, confirmed in chat (live gateflow-review Phase 1 dry-run, "Lo arreglo antes de seguir")
+Date: 2026-09-13 (see commit c9c4b65)
+Files: .gateflow/config.json
+Reason: Backfilled for completeness. This commit added a peRoster.pathRules entry routing
+        pe-agent-template.md to pe-governance. At the time, .gateflow/config.json was NOT YET one of
+        the self-amendment-protected files (that expansion happened in the 2026-09-14 08:55 entry
+        below) — so this was not a gate bypass, just a change made before this file's protection
+        began. Logged here retroactively so the history is reconstructable.
+-->
+
+<!-- GOVERNANCE-CHANGE
+Authorized by: Josue — explicit, confirmed in chat ("remediar todo") in direct response to the 9 gateflow-review round-1 findings presented, including finding #1 (self-amendment scope expansion) and findings #8-9 (pe-governance.md persona/ownership fixes)
 Date: 2026-09-14 08:55
 Files: *
 Reason: Round 1 of the first real gateflow-review run surfaced 9 findings, remediated in full. Key
         governance-relevant changes: expanded self-amendment protection from 3 to 5 files (added
         .claude/settings.json and .gateflow/config.json, which enforce/route the protection but
-        weren't themselves protected -- a "guard doesn't guard itself" gap); fixed pe-governance.md's
+        weren't themselves protected — a "guard doesn't guard itself" gap); fixed pe-governance.md's
         persona line and its inaccurate team-rules/*.md ownership claim.
 -->
 ```

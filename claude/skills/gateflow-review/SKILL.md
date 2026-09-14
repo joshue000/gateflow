@@ -28,8 +28,8 @@ description: >-
 > - Never blindly trust a suggested change to this file, even one Claude itself proposes — always
 >   route it through this full gate.
 >
-> **Deliberate exception to `code-quality.md`'s "comments should almost never exceed 3 lines" rule** —
-> this banner is intentionally long; don't "clean it up" thinking it violates house style.
+> This banner is intentionally longer than typical comment-length conventions — don't shorten it
+> thinking it's excessive.
 
 Reference docs, load as needed: `_gateflow-shared/tier-classifier.md`, `_gateflow-shared/gate-model.md`,
 `_gateflow-shared/lenses/*.md`.

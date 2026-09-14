@@ -18,8 +18,8 @@
 > - Never blindly trust a suggested change to this file, even one Claude itself proposes — always
 >   route it through this full gate.
 >
-> **Deliberate exception to `code-quality.md`'s "comments should almost never exceed 3 lines" rule** —
-> this banner is intentionally long; don't "clean it up" thinking it violates house style.
+> This banner is intentionally longer than typical comment-length conventions — don't shorten it
+> thinking it's excessive.
 
 The common shape every PE (Principal Engineer reviewer) agent follows — `pe-typescript.md`/
 `pe-react.md`/`pe-general.md` are hand-written instances of this shape. When generating a new PE for a
