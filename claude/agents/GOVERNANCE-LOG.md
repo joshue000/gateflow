@@ -86,4 +86,17 @@ Reason: Removed a stray leftover "</content>" wrapper-tag artifact from the end 
         fed verbatim into the dispatched agent's own prompt on every review — a real, if minor,
         functional bug, not just cosmetic.
 -->
+
+<!-- GOVERNANCE-CHANGE
+Authorized by: Josue — explicit, confirmed in chat ("Si, dale adelante") approving the GTF-21 plan
+               (docs/gateflow/plans/GTF-21-plan.md), which explicitly detailed this exact
+               .claude/settings.json change before approval was given
+Date: 2026-09-14 18:46 -05
+Files: .claude/settings.json
+Reason: Implements GTF-21 — adds a PreToolUse hook (.claude/hooks/protect-self-amendment.sh) that
+        blocks Edit/Write/Bash/MultiEdit/NotebookEdit calls against the 5 self-amendment-protected
+        files regardless of permissions.defaultMode, fixing the CRITICAL finding that the prior
+        permissions.ask-only protection was silently bypassed under defaultMode:auto. permissions.ask
+        is kept unchanged as a defense-in-depth fallback.
+-->
 ```
