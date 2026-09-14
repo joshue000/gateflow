@@ -178,6 +178,34 @@ override every time.
 **Status**: unresolved, expected to be structurally fixed by GTF-20; the narrower interim fix is not
 implemented.
 
+### `transition-to` short-circuits on statusCategory match even when the target is a genuinely different status
+
+**Where found**: gateflow (this repo), gateflow-ship Phase 5, 2026-09-14, shipping GTF-3.
+
+**Symptom**: `planning-jira.sh transition-to GTF-3 inReview` printed `{"status":"already-there"}` while
+GTF-3's real status was "In Progress" — not "In Review". Unlike the earlier-logged "already-there for a
+ticket that was NOT already there" bug (stale read, correct end-state), this time the end state was
+also wrong: the ticket never actually moved to "In Review" until manually transitioned via
+`acli jira workitem transition --key GTF-3 --status "In Review" --yes`.
+
+**Root cause**: this project's Jira workflow has both "In Progress" and "In Review" mapped to the same
+statusCategory ("indeterminate"). `transition-to`'s short-circuit logic ("if already at or past the
+target category, skip") only checks category, not the specific status name — so when the current status
+and the target semantic status share a category but are genuinely different named statuses, the script
+wrongly concludes no transition is needed and never attempts one.
+
+**Workaround used**: manual `acli jira workitem transition` to the exact status name.
+
+**To fix properly**: `transition-to`'s short-circuit should compare the *specific* current status name
+against the configured candidate list for the target, not just the category — category-level
+short-circuiting is only safe across category boundaries (new -> indeterminate -> done), not within one
+category that contains multiple distinct named statuses (as this project's workflow now does after
+adding "In Review").
+
+**Status**: unresolved, tracked as backlog. Likely related to the already-logged "already-there for a
+ticket that was NOT already there" entry (both are transition-to status-reporting defects) but has a
+distinct root cause — do not merge the two without confirming they're actually the same bug.
+
 ## Resolved
 
 ### `transition-to` crashed with "mapfile: command not found" on macOS's default bash
