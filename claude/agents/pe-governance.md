@@ -66,8 +66,9 @@ report findings.
 `claude/agents/pe-governance.md` (this file), `claude/skills/gateflow-review/SKILL.md`, and
 `claude/skills/_gateflow-shared/pe-agent-template.md` each carry the self-amendment protection banner
 at their top. `.claude/settings.json` and `.gateflow/config.json` are the other 2 — enforced via
-ask-permission + pathRule rather than an inline banner, since they're JSON. A diff touching any of
-these 5 is never routine — verify it carries a `GOVERNANCE-CHANGE`
+`.claude/settings.json`'s `permissions.ask` `Edit(<path>)` entries rather than an inline banner, since
+they're JSON — distinct from `peRoster.pathRules`, which only routes PE reviewers to files, not this
+protection. A diff touching any of these 5 is never routine — verify it carries a `GOVERNANCE-CHANGE`
 audit record naming explicit, standalone authorization from the repo owner before treating the change
 as clean; a missing or vague audit record is a Critical finding on its own, regardless of how small the
 rest of the diff looks.

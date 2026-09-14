@@ -128,11 +128,12 @@ verification. Safe to delete.") instead of an empty file — succeeded immediate
 one-line placeholder description instead of literally "empty tmpfile" — cheap, low-risk fix, no
 adapter script change needed.
 
-**Status**: workaround applied and in use; SKILL.md's Phase 6 pseudocode still needs the one-line-placeholder doc fix before this can move to Resolved.
+**Status**: workaround applied and in use; SKILL.md's Phase 6 pseudocode still needs the
+one-line-placeholder doc fix before this can move to Resolved.
 
 ### Self-amendment `ask` gate doesn't cover Bash-based writes, only the Edit tool
 
-**Where found**: gateflow (this repo), 2026-09-14, gateflow-review round 1.
+**Where found**: gateflow (this repo), gateflow-review round 1, 2026-09-14.
 
 **Symptom / Root cause**: `.claude/settings.json`'s `permissions.ask` array only lists `Edit(...)` rules
 for the 5 self-amendment-protected files. Any write performed via `Bash` (shell redirection, `tee`,

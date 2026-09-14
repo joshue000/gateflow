@@ -44,13 +44,30 @@ Reason: Backfilled for completeness. This commit added a peRoster.pathRules entr
 -->
 
 <!-- GOVERNANCE-CHANGE
-Authorized by: Josue — explicit, confirmed in chat ("remediar todo") in direct response to the 9 gateflow-review round-1 findings presented, including finding #1 (self-amendment scope expansion) and findings #8-9 (pe-governance.md persona/ownership fixes)
+Authorized by: Josue -- explicit, confirmed in chat ("remediar todo, BUGS.md debe poder rastrear o contener bugs de distintos proyectos")
 Date: 2026-09-14 08:55
 Files: *
 Reason: Round 1 of the first real gateflow-review run surfaced 9 findings, remediated in full. Key
         governance-relevant changes: expanded self-amendment protection from 3 to 5 files (added
         .claude/settings.json and .gateflow/config.json, which enforce/route the protection but
-        weren't themselves protected — a "guard doesn't guard itself" gap); fixed pe-governance.md's
+        weren't themselves protected -- a "guard doesn't guard itself" gap); fixed pe-governance.md's
         persona line and its inaccurate team-rules/*.md ownership claim.
+-->
+
+<!-- GOVERNANCE-CHANGE
+Authorized by: Josue — explicit, confirmed in chat ("remediar todo") in response to gateflow-review
+               round 2 finding #1 (vague/commingled citation) and finding #5 (dash-style
+               inconsistency) found in the entry above
+Date: 2026-09-14 13:45
+Files: claude/agents/GOVERNANCE-LOG.md
+Reason: Correction to the 2026-09-14 08:55 entry above. Its original "Authorized by" line vaguely
+        cited an unrelated BUGS.md scope decision instead of the governance changes it actually
+        authorized, and used inconsistent dash style. Correct citation: authorized via "remediar
+        todo" in direct response to the 9 gateflow-review round-1 findings presented, specifically
+        finding #1 (self-amendment scope expansion to 5 files) and findings #8-9 (pe-governance.md
+        persona/ownership fixes). Per this file's own append-only rule, the entry above is left
+        unchanged rather than rewritten — this entry documents the correction instead of rewriting
+        history. (Round 2's remediation mistakenly edited that entry in place; this restores the
+        original and corrects properly via append, per gateflow-review round 3's finding.)
 -->
 ```
