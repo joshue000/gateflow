@@ -94,3 +94,18 @@ None.
 ---
 
 **Gate 1: LOCKED** at `aceacff27061d8a1a3fdc18eab47cb9c0c6e267b` — 2 consecutive clean rounds (6 and 7). Next: `/gateflow-ship` when ready.
+
+---
+
+## Ship override — 2026-09-14 14:43
+
+Gate 1 locked at `aceacff27061d8a1a3fdc18eab47cb9c0c6e267b` (round 7). The only commit between that SHA
+and the current HEAD (`93741f80fd5a49555463db28f7d5f82c60d65121`) is this review file's own persist
+commit — zero code changes, pure documentation. `gateflow-ship`'s Phase 1 SHA-match check correctly
+flagged the mismatch (a real structural gap, logged as a new BUGS.md entry and tracked under GTF-20's
+eventual fix), not a stale/unreviewed diff.
+
+**Authorized by**: Josue — explicit ("Si, vayamos con el override"), in direct response to this specific
+SHA-mismatch explanation.
+**Reason**: proceeding with `/gateflow-ship` despite the technical SHA mismatch, since the delta is
+provably non-substantive (the review record itself).

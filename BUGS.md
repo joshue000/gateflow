@@ -147,6 +147,37 @@ calls against the 5 protected paths, not an `ask` permission array scoped to `Ed
 
 **Status**: unresolved, tracked as backlog.
 
+### gateflow-ship's SHA-match check is unsatisfiable when the review file itself gets committed
+
+**Where found**: gateflow (this repo), gateflow-ship Phase 1 preflight, 2026-09-14, shipping GTF-3.
+
+**Symptom**: `gateflow-review`'s Phase 7 persists the review verdict by committing
+`docs/gateflow/reviews/{key}-review.md` to the repo. That commit itself becomes the new HEAD. When
+`gateflow-ship`'s Phase 1 then checks `if latest.sha != current HEAD: stop`, it always fails — the
+persisted round's recorded SHA is necessarily the commit *before* the persist commit, which can never
+equal HEAD *after* persisting, since the review file cannot know its own future commit hash at the
+moment its content is written.
+
+**Root cause**: a structural chicken-and-egg gap in the current design: persisting the review verdict
+as a committed file inherently shifts HEAD past the SHA that verdict certifies, with no way for the
+review file to correctly self-reference the commit it will become part of.
+
+**Workaround used**: explicit human override — the only commit between the locked SHA and current HEAD
+was the review-file-persist commit itself (zero code changes, pure documentation), so shipping was
+manually authorized to proceed despite the SHA mismatch. Documented as an override in
+`docs/gateflow/reviews/GTF-3-review.md` rather than silently bypassing the check.
+
+**To fix properly**: this is a direct consequence of committing plan/review docs to the repo at all —
+already tracked as ticket GTF-20 ("Stop committing gateflow-implement/gateflow-review's plan and review
+docs to the consuming repo — persist as Jira/GitHub comments instead"). Once GTF-20 lands, this bug
+disappears structurally (nothing gets committed, so there's no SHA to chase). Until then, a narrower
+interim fix: gateflow-ship's Phase 1 SHA check could special-case "HEAD's only new commit since the
+locked SHA touches solely the review file itself" as an automatic pass, rather than requiring manual
+override every time.
+
+**Status**: unresolved, expected to be structurally fixed by GTF-20; the narrower interim fix is not
+implemented.
+
 ## Resolved
 
 ### `transition-to` crashed with "mapfile: command not found" on macOS's default bash
