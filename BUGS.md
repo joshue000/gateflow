@@ -1,10 +1,11 @@
 # Dogfooding findings
 
-Anomalies hit while using gateflow for real on `fastender` (gateflow's own guinea-pig project) where
-it's unclear at the time whether the cause is gateflow itself, `acli`, or something else. Log it here
-the moment it's found — don't wait until it's diagnosed. Move an entry to "Resolved" with the actual
-root cause once it's understood; delete only if it turns out not to be gateflow's fault at all (say so
-in the commit message removing it).
+Anomalies hit while using gateflow for real — dogfooding on gateflow itself (this repo) as well as on
+any consuming project (e.g. `fastender`, gateflow's own guinea-pig project) — where it's unclear at the
+time whether the cause is gateflow itself, `acli`, or something else. Log it here the moment it's found
+— don't wait until it's diagnosed. Move an entry to "Resolved" with the actual root cause once it's
+understood; delete only if it turns out not to be gateflow's fault at all (say so in the commit message
+removing it).
 
 ## Open
 
@@ -68,6 +69,142 @@ happened when one did (or vice versa).
 
 **Status**: unresolved, low priority unless it starts affecting `transition-to`'s actual candidate-list
 fallback logic (not just its status message).
+
+### `ensure-account` hard-requires `.gateflow/config.json` before gateflow-init ever writes one
+
+**Where found**: gateflow (this repo), `gateflow-init` Phase 2, 2026-09-13.
+
+**Symptom**: Running `bash claude/skills/_gateflow-shared/adapters/planning-jira.sh ensure-account
+<site>` per `gateflow-init/SKILL.md`'s Phase 2 pseudocode fails immediately with `planning-jira: no
+.gateflow/config.json in the current project — see config-schema.md` (exit 1) — even though a site is
+passed directly on the command line. `.gateflow/config.json` isn't written until Phase 8, six phases
+later, so Phase 2 as documented can never succeed on a fresh project.
+
+**Root cause**: two compounding bugs, not one.
+1. `planning-jira.sh` line 13-14 gates every op — including `ensure-account` — on
+   `.gateflow/config.json` existing, before the op switch runs.
+2. `ensure_account()` never reads its own `$1`. `planning-adapter-contract.md` documents
+   `ensure-account | <expectedSite>` — a site argument — but the implementation ignores it and instead
+   reads `expected_site` unconditionally from the config file (`jq -r '.planning.settings.site'
+   "$CONFIG"`, line 16). The CLI argument gateflow-init passes is silently discarded.
+
+`gateflow-init/SKILL.md` Phase 2/Phase 8 and `config-schema.md` were all re-checked: no phase writes a
+partial/minimal config before Phase 8, and no doc describes an intended bootstrap sequence. This is a
+genuine ordering bug, not a documented-but-missed step.
+
+**Workaround used**: manually wrote a minimal `.gateflow/config.json` containing just
+`{"planning":{"settings":{"site":"<site>"}}}` before Phase 2, matching exactly the one field
+`ensure_account()` actually reads. Phase 8 later overwrites the file wholesale with the full object, so
+the partial content is safe to leave in place in the meantime.
+
+**To fix properly**: either (a) `planning-jira.sh`'s `ensure-account` case should use `$1` when passed,
+skipping the config-file read entirely for that op (matching `planning-adapter-contract.md`'s
+documented `<expectedSite>` signature), or (b) `gateflow-init/SKILL.md` Phase 2 should write a minimal
+`{vcs, planning}` config before calling `ensure-account`, with Phase 8 doing a full overwrite as
+already documented. (a) is preferable — it fixes the contract mismatch at the source and lets
+`ensure-account` be called standalone from outside any gateflow project, which the contract's argument
+signature implies was the original intent.
+
+**Status**: unresolved, blocks `gateflow-init` Phase 2 on every fresh project until fixed.
+
+### `create-ticket`'s `--description-file` rejects an empty file
+
+**Where found**: gateflow (this repo), `gateflow-init` Phase 6, 2026-09-13, creating the throwaway
+status-verification ticket.
+
+**Symptom**: `gateflow-init/SKILL.md` Phase 6's pseudocode calls
+`create-ticket --type Task --summary "..." --description-file <empty tmpfile>` — but passing a truly
+empty file fails with `✗ Error: The field value is not valid Atlassian Document Format (ADF) content.`
+A file containing at least one line of plain text succeeds and converts to ADF fine.
+
+**Root cause**: not fully diagnosed — likely `acli`'s plain-text-to-ADF conversion (or Jira's API
+validation of the resulting ADF document) rejects an empty `doc` node. Not reproduced against other
+`acli` commands/fields, only `create-ticket`'s `--description-file` path.
+
+**Workaround used**: wrote one line of placeholder text ("Throwaway ticket for gateflow-init status
+verification. Safe to delete.") instead of an empty file — succeeded immediately.
+
+**To fix properly**: update `gateflow-init/SKILL.md` Phase 6's pseudocode to specify writing a
+one-line placeholder description instead of literally "empty tmpfile" — cheap, low-risk fix, no
+adapter script change needed.
+
+**Status**: workaround applied and in use; SKILL.md's Phase 6 pseudocode still needs the
+one-line-placeholder doc fix before this can move to Resolved.
+
+### Self-amendment `ask` gate doesn't cover Bash-based writes, only the Edit tool
+
+**Where found**: gateflow (this repo), gateflow-review round 1, 2026-09-14.
+
+**Symptom / Root cause**: `.claude/settings.json`'s `permissions.ask` array only lists `Edit(...)` rules
+for the 5 self-amendment-protected files. Any write performed via `Bash` (shell redirection, `tee`,
+`sed -i`, or any other command that overwrites one of those files) never triggers the `Edit`-scoped
+`ask` gate at all — the protection only inspects the `Edit` tool's target path, not what a `Bash` call
+writes to. A PE reviewer or any Bash-capable actor could overwrite a protected file without ever hitting
+the gate.
+
+**To fix properly**: a `PreToolUse` hook inspecting `Edit`/`Write`/`Bash`/`MultiEdit`/`NotebookEdit`
+calls against the 5 protected paths, not an `ask` permission array scoped to `Edit` alone.
+
+**Status**: unresolved, tracked as backlog.
+
+### gateflow-ship's SHA-match check is unsatisfiable when the review file itself gets committed
+
+**Where found**: gateflow (this repo), gateflow-ship Phase 1 preflight, 2026-09-14, shipping GTF-3.
+
+**Symptom**: `gateflow-review`'s Phase 7 persists the review verdict by committing
+`docs/gateflow/reviews/{key}-review.md` to the repo. That commit itself becomes the new HEAD. When
+`gateflow-ship`'s Phase 1 then checks `if latest.sha != current HEAD: stop`, it always fails — the
+persisted round's recorded SHA is necessarily the commit *before* the persist commit, which can never
+equal HEAD *after* persisting, since the review file cannot know its own future commit hash at the
+moment its content is written.
+
+**Root cause**: a structural chicken-and-egg gap in the current design: persisting the review verdict
+as a committed file inherently shifts HEAD past the SHA that verdict certifies, with no way for the
+review file to correctly self-reference the commit it will become part of.
+
+**Workaround used**: explicit human override — the only commit between the locked SHA and current HEAD
+was the review-file-persist commit itself (zero code changes, pure documentation), so shipping was
+manually authorized to proceed despite the SHA mismatch. Documented as an override in
+`docs/gateflow/reviews/GTF-3-review.md` rather than silently bypassing the check.
+
+**To fix properly**: this is a direct consequence of committing plan/review docs to the repo at all —
+already tracked as ticket GTF-20 ("Stop committing gateflow-implement/gateflow-review's plan and review
+docs to the consuming repo — persist as Jira/GitHub comments instead"). Once GTF-20 lands, this bug
+disappears structurally (nothing gets committed, so there's no SHA to chase). Until then, a narrower
+interim fix: gateflow-ship's Phase 1 SHA check could special-case "HEAD's only new commit since the
+locked SHA touches solely the review file itself" as an automatic pass, rather than requiring manual
+override every time.
+
+**Status**: unresolved, expected to be structurally fixed by GTF-20; the narrower interim fix is not
+implemented.
+
+### `transition-to` short-circuits on statusCategory match even when the target is a genuinely different status
+
+**Where found**: gateflow (this repo), gateflow-ship Phase 5, 2026-09-14, shipping GTF-3.
+
+**Symptom**: `planning-jira.sh transition-to GTF-3 inReview` printed `{"status":"already-there"}` while
+GTF-3's real status was "In Progress" — not "In Review". Unlike the earlier-logged "already-there for a
+ticket that was NOT already there" bug (stale read, correct end-state), this time the end state was
+also wrong: the ticket never actually moved to "In Review" until manually transitioned via
+`acli jira workitem transition --key GTF-3 --status "In Review" --yes`.
+
+**Root cause**: this project's Jira workflow has both "In Progress" and "In Review" mapped to the same
+statusCategory ("indeterminate"). `transition-to`'s short-circuit logic ("if already at or past the
+target category, skip") only checks category, not the specific status name — so when the current status
+and the target semantic status share a category but are genuinely different named statuses, the script
+wrongly concludes no transition is needed and never attempts one.
+
+**Workaround used**: manual `acli jira workitem transition` to the exact status name.
+
+**To fix properly**: `transition-to`'s short-circuit should compare the *specific* current status name
+against the configured candidate list for the target, not just the category — category-level
+short-circuiting is only safe across category boundaries (new -> indeterminate -> done), not within one
+category that contains multiple distinct named statuses (as this project's workflow now does after
+adding "In Review").
+
+**Status**: unresolved, tracked as backlog. Likely related to the already-logged "already-there for a
+ticket that was NOT already there" entry (both are transition-to status-reporting defects) but has a
+distinct root cause — do not merge the two without confirming they're actually the same bug.
 
 ## Resolved
 

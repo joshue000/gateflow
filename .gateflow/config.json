@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "vcs": {
+    "backend": "github",
+    "settings": {
+      "owner": "joshue000",
+      "repo": "gateflow",
+      "defaultBaseBranch": "main"
+    }
+  },
+  "planning": {
+    "backend": "jira",
+    "settings": {
+      "site": "josue-am95.atlassian.net",
+      "projectKey": "GTF"
+    }
+  },
+  "sddPersistence": "openspec",
+  "contentLanguage": "en",
+  "peRoster": {
+    "fallback": "pe-general",
+    "pathRules": [
+      { "pattern": "**/*.sh", "agent": "pe-bash" },
+      { "pattern": "**/SKILL.md", "agent": "pe-governance" },
+      { "pattern": "**/agents/*.md", "agent": "pe-governance" },
+      { "pattern": "**/commands/*.md", "agent": "pe-governance" },
+      { "pattern": "**/pe-agent-template.md", "agent": "pe-governance" },
+      { "pattern": "CLAUDE.md", "agent": "pe-governance" },
+      { "pattern": ".claude/settings.json", "agent": "pe-governance" },
+      { "pattern": ".gateflow/config.json", "agent": "pe-governance" },
+      { "pattern": "**/*-adapter-contract.md", "agent": "pe-bash" }
+    ]
+  },
+  "reviewers": [],
+  "jiraStatusCandidates": {
+    "activeWork": ["In Progress"],
+    "inReview": ["In Review"],
+    "done": ["Done"]
+  }
+}
