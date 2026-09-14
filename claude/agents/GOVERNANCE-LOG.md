@@ -5,6 +5,10 @@ Log of changes applied to the self-amendment-protected files:
 `claude/skills/_gateflow-shared/pe-agent-template.md`, `.claude/settings.json`, and
 `.gateflow/config.json`.
 
+Corrections to this log's own prior entries (never edits — see the rule below) also use
+this format for consistency, even though this file isn't itself one of the 5 protected
+files above.
+
 **Entries are append-only — a past entry is never edited or deleted.** Git history
 is the tamper-proof evidence; this file is the readable index, not the integrity
 mechanism.
