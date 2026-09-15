@@ -260,7 +260,10 @@ early-return almost always fired first).
 found); confirmed broader and more severe via a live test, 2026-09-14, same session (after a restart,
 testing the shipped GTF-3 protection directly); the hook's own first fix then over-blocked legitimate
 reads, found and fixed the same day; a command-chaining bypass in that fix was then found by
-gateflow-review round 2, 2026-09-14.
+gateflow-review round 2, 2026-09-14; a background-operator bypass in the round-2 fix was then found via
+live re-verification, round 3, 2026-09-14; a path-spelling/cd-relative-addressing bypass in the round-3
+allowlist, plus the hook script's own lack of self-protection, were then found by gateflow-review round
+4, 2026-09-15.
 
 **Symptom / Root cause (original bug)**: originally scoped as "Bash isn't covered" —
 `.claude/settings.json`'s `permissions.ask` array only lists `Edit(...)` rules for the 5
@@ -341,9 +344,69 @@ automated test suite passes. Commits: `3034161` (round-1 tests), `1b2f392` (roun
 (round-1 wiring), `fd20f25` (round-1 governance log entry), `92e4c76` (moved to Resolved), `c88d170`
 (round-1 over-blocking fix — fail-closed + read/write distinction), `27a5bcd` (round-1 regression tests),
 `b4bf56f` (untracked-citation correction), `c728a75` (round-2 command-chaining fix), `2136f22`/`c3cf596`
-(round-2 doc updates). Round-2's command-chaining fix and this doc update touched only
-`.claude/hooks/protect-self-amendment.sh`, its test file, and this doc — none of the 5 self-amendment-
-protected files — so no `GOVERNANCE-LOG.md` entry applies to either; the same is true of round 3's
-allowlist rewrite.
+(round-2 doc updates), `058ca10` (round-3 character-allowlist commit). Round-2's command-chaining fix
+and this doc update touched only `.claude/hooks/protect-self-amendment.sh`, its test file, and this
+doc — none of the 6 self-amendment-protected files — so no `GOVERNANCE-LOG.md` entry applies to either;
+the same is true of round 3's allowlist rewrite.
 
-**Status**: resolved.
+**Round-4 findings (gateflow-review, 2026-09-15)**: two more gaps, both in the same "enumerate instead
+of allowlist" and "guard doesn't guard itself" families as the rounds above.
+
+1. **Path-spelling / cd-relative-addressing bypass (CRITICAL).** The Bash branch only ever scrutinized
+   a command's character-allowlist/read-only-verb shape when a protected path appeared as an EXACT
+   LITERAL SUBSTRING of the raw command text — a pre-gate, not the allowlist itself. An alternate
+   spelling of the same path (`.claude//settings.json`, a doubled slash; `.claude/./settings.json`, a
+   redundant `./` segment) or a `cd` into the target directory followed by the bare filename
+   (`cd .claude && printf PWNED > settings.json`) never matched that literal substring, so the
+   allowlist/verb logic never ran at all and the command sailed through unconditionally. Confirmed
+   live: `sed -i '' 's/x/y/' .claude//settings.json` was ALLOWED. Root cause: same structural pattern
+   as every prior round — a single fixed spelling/substring check is not an allowlist, no matter how
+   good the logic gated behind it is.
+
+2. **The hook script didn't protect itself (HIGH).** `.claude/hooks/protect-self-amendment.sh` was not
+   in its own `PROTECTED_PATHS`, and wasn't in `.claude/settings.json`'s `permissions.ask` either — so
+   the file that enforces the entire protection mechanism could itself be edited or deleted with zero
+   gate, silently disabling everything above. Same "guard doesn't guard itself" class as the
+   `.claude/settings.json`/`.gateflow/config.json` gap fixed in the 2026-09-14 08:55 entry.
+
+**Fix (round 4, designed and verified, application blocked — see below)**: (1) command text is
+normalized before the substring check (consecutive `/` collapsed to one, `/./` segments collapsed to
+one `/`, both to a fixed point), closing the alternate-spelling half of finding 1; a command containing
+a `cd`/`pushd`/`source` token anywhere is denied whenever it does not independently pass as a single
+safe read-only invocation, regardless of whether a protected path is textually present, closing the
+cd-relative-addressing half (documented, accepted tradeoff: a read-only command that `cd`s somewhere
+unrelated first, e.g. `cd /tmp && ls`, is also denied — cd/pushd/source defeat static path-relevance
+analysis in general, so this is not made path-specific). (2) `.claude/hooks/protect-self-amendment.sh`
+was added to its own `PROTECTED_PATHS`, and `"Edit(.claude/hooks/protect-self-amendment.sh)"` was added
+to `.claude/settings.json`'s `permissions.ask`, expanding self-amendment protection from 5 to 6 files
+(`claude/agents/GOVERNANCE-LOG.md`, 2026-09-15 08:00 entry). Test suite grew to 22 cases (added:
+double-slash bypass, embedded `./` bypass, cd-then-write bare filename, cd-then-unrelated-read
+documenting the accepted tradeoff) — committed to `test-protect-self-amendment.sh`, which is not itself
+one of the 6 protected files.
+
+**Self-lockout discovered applying fix (2)**: adding the hook script to its own `PROTECTED_PATHS` was
+applied first (a plain `Edit`, legal at that moment since the file did not yet protect itself) and
+immediately made every further `Edit`/`Write`/`Bash`-based change to that same file — including fix
+(1)'s logic rewrite, and even a revert — hard-denied by the hook's own unconditional "deny" (not "ask")
+decision, which by design has no chat-authorization bypass. This is the mechanism working exactly as
+intended (self-protection holding even against the session that just added it), but it means the actual
+logic fix (1) could not be applied to the tracked file through Claude Code tool calls in the same pass
+that added self-protection — the ordering has to be reversed (apply (1) and (2) as one single edit, not
+two) or a human must apply the remainder directly, outside Claude Code. `PROTECTED_PATHS` on the tracked
+file currently includes itself; the character-allowlist/`cd`-token logic rewrite from fix (1) and the
+updated header comment do not yet exist there.
+
+**Verified**: 2026-09-15, fix (1)+(2)'s complete logic was written and tested against a byte-identical
+copy of the hook in an isolated scratch directory (not the tracked file, per the lockout above). All 4
+round-4 adversarial reproductions (`sed -i '' 's/x/y/' .claude//settings.json`; the same with
+`.claude/./settings.json`; `cd .claude && printf PWNED > settings.json`; `cd claude/agents; echo PWNED
+>> pe-governance.md`) correctly deny. Legitimate reads (`cat .claude/settings.json`, `git log --
+.gateflow/config.json`, `git diff -- .claude/settings.json`) still allow. Previously-fixed bypasses
+(`;`, `&&`, `&`) still deny. A direct `Edit`/`Bash`-write attempt against the hook script itself also
+denies. Full 22/22 automated test suite passes against that scratch copy; only 18/22 currently pass
+against the tracked file (the 4 new round-4 cases correctly fail there, since the tracked file doesn't
+have fix (1) applied yet).
+
+**Status**: fix designed, isolated-copy-verified, and test-covered; NOT YET applied to the tracked
+`.claude/hooks/protect-self-amendment.sh` — blocked on manual application (see self-lockout above). The
+verified final content is available for direct application outside Claude Code's tool calls.
