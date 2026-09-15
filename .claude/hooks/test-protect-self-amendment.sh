@@ -38,6 +38,13 @@ build_bash_stdin() {
     '{session_id:$id,cwd:$cwd,permission_mode:"auto",hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:$cmd},tool_use_id:$id}'
 }
 
+build_notebookedit_stdin() {
+  # $1=session_id $2=file_path -- best-guess field name, matching the hook's own
+  # best-guess handling (see protect-self-amendment.sh's NotebookEdit branch comment).
+  jq -n --arg cwd "$REPO_ROOT" --arg fp "$2" --arg id "$1" \
+    '{session_id:$id,cwd:$cwd,permission_mode:"auto",hook_event_name:"PreToolUse",tool_name:"NotebookEdit",tool_input:{file_path:$fp,new_source:"x"},tool_use_id:$id}'
+}
+
 # ---- runner + assertions ---------------------------------------------------
 
 run_hook() {
@@ -127,6 +134,21 @@ assert_deny "7 malformed stdin fails closed" "$actual" "parse"
 # 8. Edit on an agent file NOT in the 5-file allowlist -> no deny (exact allowlist, not */agents/*.md)
 actual="$(run_hook "$(build_edit_stdin t8 Edit claude/agents/pe-general.md)")"
 assert_no_deny "8 Edit non-protected agent file pe-general.md" "$actual"
+
+# 9. Edit on a protected file using an absolute file_path (what real Edit/Write/MultiEdit
+# calls actually send) -> deny. Exercises normalize_path's cwd-stripping branch.
+actual="$(run_hook "$(build_edit_stdin t9 Edit "$REPO_ROOT/claude/agents/pe-governance.md")")"
+assert_deny "9 Edit protected pe-governance.md via absolute path" "$actual" "claude/agents/pe-governance.md"
+
+# 10. NotebookEdit on a best-guess protected file_path -> deny, matching the branch's
+# current best-guess handling (tool_input.file_path).
+actual="$(run_hook "$(build_notebookedit_stdin t10 .gateflow/config.json)")"
+assert_deny "10 NotebookEdit best-guess protected .gateflow/config.json" "$actual"
+
+# 11. Read-only Bash command referencing a protected path -> no deny. Locks in the
+# read-vs-write distinction so a future change can't silently regress it either way.
+actual="$(run_hook "$(build_bash_stdin t11 "cat .claude/settings.json")")"
+assert_no_deny "11 Bash read-only cat on protected .claude/settings.json" "$actual"
 
 # ---- summary ------------------------------------------------------------
 
