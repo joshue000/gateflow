@@ -55,6 +55,16 @@
 # permanent, documented limitation of static text scanning as a technique -- not an
 # open-ended obligation to keep re-auditing this file indefinitely.
 #
+# CLOSED, 2026-09-15 (explicit repo-owner decision, "si, dale" approving round 3's 5
+# fixes as final): three consecutive dedicated adversarial rounds (round 6's git
+# grammar, its case-insensitivity re-review, and round 3's glob/env-var/param-concat
+# re-review) each found a genuinely new bypass CLASS, confirming this policy's own
+# prediction that "this is the last round" cannot be asserted, only checked one round
+# at a time. This round's findings are fixed, per the policy above -- and per the same
+# policy, that is now where Bash-bypass hunting on this ticket stops. A bypass class
+# found later is a new BUGS.md entry / new ticket, full stop, not grounds to reopen
+# this file's review under this ticket.
+#
 # Bash 3.2 portable (macOS ships 3.2) -- no mapfile, readarray, declare -A, or
 # ${var,,}/${var^^} case conversion. [[ =~ ]] (POSIX ERE) is used for word-boundary
 # matching below -- available since bash 3.0, so still portable to 3.2.
@@ -134,6 +144,34 @@
 #      since only the one exact trusted spelling should ever fast-path; a capitalized
 #      `Git diff -- <path>` now correctly falls through to the (now case-insensitive)
 #      deny checks instead of being fast-pathed, which is the conservative direction.
+#   7. (glob expansion / git --config-env= / GIT_* env vars / env -C / parameter
+#      concatenation, round 6's dedicated adversarial re-review) the FIRST dedicated
+#      adversarial pass on bypass 5's narrowed contains_unsafe_git_invocation found 5
+#      more gaps, three of which are NOT git-specific at all -- the first findings in
+#      this file's entire history that weren't about git or a fixed path spelling:
+#      (a) a glob/wildcard character (`*`, `?`, `[`) in a protected-path argument is
+#      never expanded by this hook's static text match, but IS expanded by the real
+#      shell at actual execution time -- `printf PWNED > .claude/settings.????` wrote
+#      the real file while this hook saw no literal match; (b) `git --config-env=` has
+#      identical config-injection power to `-c` but reads its value from an env var,
+#      so it never contains the literal `-c` token; (c) `GIT_DIR=`/`GIT_WORK_TREE=`/
+#      `GIT_CONFIG_COUNT=`+`GIT_CONFIG_KEY_<n>=`/`GIT_CONFIG_VALUE_<n>=` env-var
+#      prefixes achieve the same redirection/injection as the checked flags with zero
+#      flag tokens in the command text; (d) `env -C <dir>` (and any other external
+#      tool with its own cwd-redirect flag -- `tar -C`, `make -C`, `rsync`, ...) was
+#      invisible to the cd/pushd/source word check, which only ever looked at those
+#      three literal words; (e) two adjacent bare `$var` references concatenate into
+#      the real protected filename at shell-expansion time with no quote or backslash
+#      character present at all. Fixed by: (a)+(e) extending
+#      `contains_disallowed_escape_char` to also flag `*`, `?`, `[`, and bare `$` --
+#      the same "can't see through shell reinterpretation" category the backslash/
+#      quote check already covered; (b)+(c) extending `contains_unsafe_git_invocation`
+#      with `--config-env=` and the `GIT_*` env-var prefixes; (d) generalizing
+#      `contains_cd_token` to deny a standalone `-C`/`--chdir=`/`--directory=` token on
+#      ANY command, not just git -- closing the class instead of enumerating
+#      `env`/`tar`/`make`/`rsync` one at a time, consistent with this file's
+#      established allowlist philosophy.
+
 # Any enumerated "list of dangerous things" (or, per bypass 3, any single fixed
 # spelling of a protected path) is structurally incomplete -- there is always one more
 # operator, mechanism, spelling, or whitespace character nobody thought to add. Every
@@ -346,24 +384,40 @@ contains_cd_token() {
   # string/";"/"&"/"|"/whitespace, followed by whitespace or end-of-string -- so it
   # never matches ".claude/settings.json", "./relative/path", or "3.14"). All of these
   # make the command's effective working directory (and therefore what a bare relative
-  # filename resolves to) impossible to determine by static substring matching. Note:
-  # git's OWN cwd-changing flag (`-C <dir>`) is intentionally NOT handled here -- it's
-  # closed by `contains_unsafe_git_invocation` instead, since any `git` invocation
-  # outside the safe grammar is denied regardless of which flag it uses.
+  # filename resolves to) impossible to determine by static substring matching. Also
+  # denies a standalone `-C <dir>`/`--chdir=`/`--directory=` token on ANY command, not
+  # just git -- `env -C <dir> cp payload bare.txt`, `tar -C <dir> ...`, `make -C <dir>
+  # ...`, and other external tools share this same cwd-redirect flag shape (round-3
+  # re-review finding: generalized here instead of enumerated per-tool, matching this
+  # file's established allowlist philosophy).
   local text="$1"
   [[ "$text" =~ (^|[^a-zA-Z0-9_])(cd|pushd|source)([^a-zA-Z0-9_]|$) ]] && return 0
   [[ "$text" =~ (^|[;\&\|[:space:]])\.([[:space:]]|$) ]] && return 0
+  [[ "$text" =~ (^|[[:space:]])-C([[:space:]]|$) ]] && return 0
+  [[ "$text" =~ (^|[[:space:]])--chdir(=|[[:space:]]) ]] && return 0
+  [[ "$text" =~ (^|[[:space:]])--directory(=|[[:space:]]) ]] && return 0
   return 1
 }
 
 contains_disallowed_escape_char() {
-  # $1 = raw command text. True iff a backslash, single quote, or double quote
-  # character appears anywhere -- these can respell or reconstruct a protected path in
-  # ways static substring matching cannot see through (see bypass 4 in the header).
+  # $1 = raw command text. True iff a backslash, single quote, double quote, glob
+  # wildcard (*, ?, [), or bare $ character appears anywhere -- all of these let the
+  # shell reconstruct or expand the command's real target only at actual execution
+  # time, after this hook has already decided: backslash/quote respell a path
+  # (bypass 4); a glob character expands to the real filename only when the real
+  # shell runs the command, never visible to this hook's static text (round-3
+  # re-review finding -- `printf X > .claude/settings.????` writes the real file
+  # while this hook sees no literal match); a bare $ starts a parameter expansion,
+  # and two adjacent bare-$var references can concatenate into a protected filename
+  # with no quote or backslash at all (round-3 re-review finding).
   case "$1" in
     *\\*) return 0 ;;
     *"'"*) return 0 ;;
     *'"'*) return 0 ;;
+    *'*'*) return 0 ;;
+    *'?'*) return 0 ;;
+    *'['*) return 0 ;;
+    *'$'*) return 0 ;;
   esac
   return 1
 }
@@ -438,6 +492,19 @@ contains_unsafe_git_invocation() {
   [[ "$lower_text" =~ (^|[[:space:]])--git-dir(=|[[:space:]]) ]] && return 0
   [[ "$lower_text" =~ (^|[[:space:]])--work-tree(=|[[:space:]]) ]] && return 0
   [[ "$lower_text" =~ (^|[[:space:]])--exec-path(=|[[:space:]]) ]] && return 0
+  # --config-env= has identical config-injection power to -c (reads the value from an
+  # env var instead of the command line), so it never contains the literal "-c"
+  # token above (round-3 re-review finding).
+  [[ "$lower_text" =~ (^|[[:space:]])--config-env(=|[[:space:]]) ]] && return 0
+  # GIT_DIR=/GIT_WORK_TREE=/GIT_CONFIG_COUNT=+GIT_CONFIG_KEY_<n>=/GIT_CONFIG_VALUE_<n>=
+  # env-var prefixes achieve the exact same redirection/config-injection as the flags
+  # above, with zero flag tokens in the command text at all (round-3 re-review
+  # finding) -- checked only once "git" is already confirmed present above.
+  [[ "$lower_text" =~ (^|[[:space:]])git_dir= ]] && return 0
+  [[ "$lower_text" =~ (^|[[:space:]])git_work_tree= ]] && return 0
+  [[ "$lower_text" =~ (^|[[:space:]])git_config_count= ]] && return 0
+  [[ "$lower_text" =~ (^|[[:space:]])git_config_key_ ]] && return 0
+  [[ "$lower_text" =~ (^|[[:space:]])git_config_value_ ]] && return 0
   return 1
 }
 
