@@ -231,4 +231,39 @@ Reason: Closes gateflow-review round 2's CRITICAL finding: every protected-path/
         correctness fix to an unintended over-block discovered live in this session. See BUGS.md's
         round-6 re-review entry for detail.
 -->
+
+<!-- GOVERNANCE-CHANGE
+Authorized by: Josue — explicit, confirmed in chat ("si, dale, resolvamos") for the plan this commit
+               implements
+Date: 2026-09-15 (see commit 6970705)
+Files: .claude/hooks/protect-self-amendment.sh
+Reason: Correction/backfill. The entry above authorized this change before it landed and promised
+        "commit hash to follow once applied" — that commit is 6970705 ("fix: GTF-21 case-insensitive
+        matching, narrow git-invocation scope"). Recorded here per the append-only rule (the entry above
+        is left unchanged) with the actual commit hash — same pattern as the deda7ef and 38fb720
+        backfills above. Process note: this is the 3rd time this exact placeholder has been left
+        unfilled at commit time; gateflow-review's round-closing step should check for "commit hash to
+        follow" text referencing the round just closed before considering a round done.
+-->
+
+<!-- GOVERNANCE-CHANGE
+Authorized by: Josue — explicit, confirmed in chat ("si, dale") in response to gateflow-review GTF-21
+               round 3 (of the review file) findings — the first dedicated adversarial pass on the
+               narrowed contains_unsafe_git_invocation from commit 6970705
+Date: 2026-09-15 (round 3 re-review remediation, commit hash to follow once applied)
+Files: .claude/hooks/protect-self-amendment.sh
+Reason: Closes gateflow-review round 3's 5 findings (3 CRITICAL, 1 HIGH, 1 MEDIUM), the first in this
+        entire history not exclusively about git or a fixed-spelling path: glob/wildcard expansion
+        (*, ?, [) never expanded by static text but expanded by the real shell at execution time;
+        git --config-env= (same power as -c, reads from an env var instead); GIT_DIR=/GIT_WORK_TREE=/
+        GIT_CONFIG_* env-var prefixes achieving the same redirection with zero flag tokens; env -C
+        (and other external tools' own cwd-redirect flags) invisible to the cd-token check; bare
+        parameter concatenation ($part1$part2) respelling a protected path with no quote/backslash.
+        Fixed by extending contains_disallowed_escape_char (glob chars, bare $), extending
+        contains_unsafe_git_invocation (--config-env=, GIT_* prefixes), and generalizing
+        contains_cd_token to catch a standalone -C/--chdir=/--directory= token on any command. Per the
+        explicit repo-owner decision recorded in BUGS.md's round-3 re-review closing paragraph, this is
+        the final dedicated round of Bash-bypass hunting for this ticket — any further bypass class
+        found later is a new BUGS.md entry / new ticket, not a reopening of this one.
+-->
 ```
