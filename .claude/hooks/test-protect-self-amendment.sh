@@ -153,11 +153,13 @@ assert_no_deny "11 Bash read-only cat on protected .claude/settings.json" "$actu
 
 # 12. Command-chaining bypass: a read verb chained via ";" with an unrecognized write
 # mechanism (python3) -> deny. This is the exact live-reproduced GTF-21 round-2 bypass.
-# Reason substring is the file path, not the word "chaining" -- round-3's allowlist
-# rewrite collapsed the chaining-specific deny path into the same generic
-# protected_reason() used everywhere else (see protect-self-amendment.sh Finding 1).
+# No reason substring asserted: since round 6, this command also contains the word
+# "git" and contains_unsafe_git_invocation fires first (deliberately, independent of
+# path-relevance -- see protect-self-amendment.sh's header, bypass 5), so the deny
+# reason now cites the git-grammar check rather than the protected path. Still denies
+# either way -- only the specific reason text changed, not the security property.
 actual="$(run_hook "$(build_bash_stdin t12 'git diff -- .claude/settings.json; python3 -c "print(1)"')")"
-assert_deny "12 Bash chained via ; bypasses read-only allowlist" "$actual" ".claude/settings.json"
+assert_deny "12 Bash chained via ; bypasses read-only allowlist" "$actual"
 
 # 13. Command-chaining bypass via "&&" -> deny.
 actual="$(run_hook "$(build_bash_stdin t13 "cat .claude/settings.json && echo done")")"
@@ -165,8 +167,10 @@ assert_deny "13 Bash chained via && bypasses read-only allowlist" "$actual" ".cl
 
 # 14. Newline-separated two-line command: line 1 is a read verb, line 2 references a
 # protected path -> deny. Exercises is_safe_char_command's embedded-newline rejection.
+# No reason substring asserted (see case 12's comment -- this command also contains
+# "git status" as its first line, so the round-6 git-grammar check fires first).
 actual="$(run_hook "$(build_bash_stdin t14 "$(printf 'git status\ncat .claude/settings.json')")")"
-assert_deny "14 Bash newline-separated command referencing protected path" "$actual" ".claude/settings.json"
+assert_deny "14 Bash newline-separated command referencing protected path" "$actual"
 
 # 15. Background-operator bypass ("&"): a read verb backgrounded via "&" with an
 # unrecognized write mechanism -> deny. This is the exact live-reproduced GTF-21
@@ -236,6 +240,53 @@ assert_deny "24 Bash backslash-escape respelling bypass" "$actual"
 # .clau''de/sett''ings.json` was ALLOWED.
 actual="$(run_hook "$(build_bash_stdin t25 "printf PWNED > .clau''de/sett''ings.json")")"
 assert_deny "25 Bash quote-splitting respelling bypass" "$actual"
+
+# 26. Round-6: plain "git diff -- <protected path>" (no flags) is a legitimate read of
+# a protected file and must still be allowed via the new is_safe_git_readonly_command
+# grammar -- the round-6 fix must not break ordinary git-based inspection.
+actual="$(run_hook "$(build_bash_stdin t26 "git diff -- .claude/settings.json")")"
+assert_no_deny "26 Bash git diff -- <protected path>, no flags, still allows" "$actual"
+
+# 27. Round-6: bare "git status" (no path at all) still allows.
+actual="$(run_hook "$(build_bash_stdin t27 "git status")")"
+assert_no_deny "27 Bash bare git status still allows" "$actual"
+
+# 28. Round-6 bypass: git config-injection RCE via "-c" before the subcommand.
+# Confirmed live before the fix (isolated scratch repo): `git -c
+# diff.external=<script> diff HEAD~1 HEAD` executes the configured script as a
+# subprocess -- full RCE, entirely outside this hook's visibility, and not contingent
+# on referencing a protected path at all.
+actual="$(run_hook "$(build_bash_stdin t28 "git -c diff.external=/tmp/evil.sh diff HEAD~1 HEAD")")"
+assert_deny "28 Bash git -c config-injection RCE bypass" "$actual"
+
+# 29. Round-6 bypass: "git diff --output <path> ..." (space-separated form) writes
+# the diff's own content to an arbitrary file. Confirmed live before the fix: `git
+# diff --no-index --output .claude/settings.json <a> <b>` overwrote the target.
+actual="$(run_hook "$(build_bash_stdin t29 "git diff --output .claude/settings.json HEAD~1 HEAD")")"
+assert_deny "29 Bash git diff --output write bypass" "$actual"
+
+# 30. Round-6 bypass: "git -C <dir> diff --output <bare-name> ..." combines both --
+# splits a protected path's directory from its filename across two tokens, defeating
+# both the fast path and the (pre-round-6) substring check simultaneously.
+actual="$(run_hook "$(build_bash_stdin t30 "git -C .claude diff --output settings.json HEAD~1 HEAD")")"
+assert_deny "30 Bash git -C combined bypass" "$actual"
+
+# 31. Round-6: bat, removed from the unconditional fast path per the verified-safe-verb
+# checklist (PAGER-driven subprocess surface, precautionary), now denies a protected
+# read via the ordinary protected-path substring fallback -- expected over-blocking,
+# not a regression (see the hook's header comment).
+actual="$(run_hook "$(build_bash_stdin t31 "bat .claude/settings.json")")"
+assert_deny "31 Bash bat on protected path now denies (verb removed from fast path)" "$actual"
+
+# 32. Round-6: same for less.
+actual="$(run_hook "$(build_bash_stdin t32 "less .claude/settings.json")")"
+assert_deny "32 Bash less on protected path now denies (verb removed from fast path)" "$actual"
+
+# 33. Round-6: bat on a NON-protected path still allows -- removing it from the fast
+# path doesn't blanket-deny bat, it just routes it through the ordinary fallback like
+# any other command this hook has no special opinion on.
+actual="$(run_hook "$(build_bash_stdin t33 "bat README.md")")"
+assert_no_deny "33 Bash bat on unprotected path still allows" "$actual"
 
 # ---- summary ------------------------------------------------------------
 
