@@ -410,7 +410,9 @@ adversarial reproductions (`sed -i '' 's/x/y/' .claude//settings.json`; the same
 denies. After the repo owner applied commit `deda7ef`, the full test suite was re-run directly against
 the tracked `.claude/hooks/protect-self-amendment.sh` and passes 22/22.
 
-**Round-5 findings (gateflow-review, 2026-09-15)**: three further gaps in the same "enumerate instead of
+**Round-5 findings (gateflow-review, 2026-09-15 — fix-history label; distinct from
+`docs/gateflow/reviews/GTF-21-review.md`'s own Round 5, a later documentation-verification pass)**:
+three further gaps in the same "enumerate instead of
 allowlist" family as every round above, all single, unchained Bash commands (no `;`/`&&`/`&`/`|`
 needed): (a) **dot-source** — `. /path/to/malicious.sh` (the POSIX alias for `source`) was never matched
 by `contains_cd_token()`'s word check, since `.` is punctuation, not a word; (b) **backslash-escape
@@ -419,26 +421,26 @@ execution time but whose text the static substring check never sees as a contigu
 **quote-splitting respelling** — `printf PWNED > .clau''de/sett''ings.json`, where adjacent empty quotes
 concatenate at shell-expansion time, same static-matching miss.
 
-**Fix (round 5, designed and verified against a scratch copy, application pending — same pattern as
-round 4)**: (a) extended `contains_cd_token()`'s regex to also match a bare `.` used as a standalone
-command word (word-boundary: preceded by start-of-string/`;`/`&`/`|`/whitespace, followed by
-whitespace-or-end) — verified this does not match `.claude`, `.gateflow`, a decimal number, or a
-`./relative/path` segment. (b) added `contains_disallowed_escape_char()`: in the same fallback branch,
-deny outright if the command contains a backslash (`\`) or a single/double quote (`'`, `"`) character
-ANYWHERE — a positive disqualifying condition, not an enumerated list of escape techniques, closing the
-gap where the backslash/quote exclusion already present in `is_safe_char_command`'s fast-path allowlist
-did not propagate to the fallback relevance check. The header comment documents this as bypass #4 in the
-same style as bypasses #1–3, and adds a prominent paragraph stating text-based Bash scanning's inherent,
-irreducible completeness limit (ANSI-C quoting, IFS substitution, brace expansion, etc. remain open) —
-this hook is strong protection against the original bug and unsophisticated/accidental Bash usage, and
-reasonable protection against common obfuscation, but does not claim to be airtight against a
-sophisticated, deliberately adversarial agent using Bash specifically to evade it; the unconditional
-Edit/Write/MultiEdit block remains this hook's hard, unconditional guarantee. Test suite grew to 25 cases
-(added: dot-source bypass, backslash-escape bypass, quote-splitting bypass) in
-`test-protect-self-amendment.sh` (edited directly, not protected). Same self-lockout as round 4 applies —
-the hook script protects itself, so this logic change was prepared in an isolated scratch copy (all
-25/25 cases pass there, including the 22 pre-existing cases) and is being handed to the repo owner for
-direct manual application, the same as round 4's fix (2) was.
+**Fix (round 5, applied to the tracked file, commit `401d2f7`)**: (a) extended `contains_cd_token()`'s
+regex to also match a bare `.` used as a standalone command word (word-boundary: preceded by
+start-of-string/`;`/`&`/`|`/whitespace, followed by whitespace-or-end) — verified this does not match
+`.claude`, `.gateflow`, a decimal number, or a `./relative/path` segment. (b) added
+`contains_disallowed_escape_char()`: in the same fallback branch, deny outright if the command contains
+a backslash (`\`) or a single/double quote (`'`, `"`) character ANYWHERE — a positive disqualifying
+condition, not an enumerated list of escape techniques, closing the gap where the backslash/quote
+exclusion already present in `is_safe_char_command`'s fast-path allowlist did not propagate to the
+fallback relevance check. The header comment documents this as bypass #4 in the same style as bypasses
+#1–3, and adds a prominent paragraph stating text-based Bash scanning's inherent, irreducible
+completeness limit (ANSI-C quoting, IFS substitution, brace expansion, etc. remain open) — this hook is
+strong protection against the original bug and unsophisticated/accidental Bash usage, and reasonable
+protection against common obfuscation, but does not claim to be airtight against a sophisticated,
+deliberately adversarial agent using Bash specifically to evade it; the unconditional Edit/Write/
+MultiEdit block remains this hook's hard, unconditional guarantee. Test suite grew to 25 cases (added:
+dot-source bypass, backslash-escape bypass, quote-splitting bypass) in `test-protect-self-amendment.sh`
+(edited directly, not protected). Same self-lockout as round 4 applied — the hook script protects
+itself, so this logic change was prepared in an isolated scratch copy, handed to the repo owner, and
+applied directly to the tracked file (commit `401d2f7`); the full 25/25 suite was then re-run against
+the tracked file and confirmed passing.
 
 **Unrelated discovery (2026-09-15, found while re-running `/gateflow-review` for round 6)**:
 `.gateflow/config.json` has no `tierClassifier` object at all, though `tier-classifier.md` reads
