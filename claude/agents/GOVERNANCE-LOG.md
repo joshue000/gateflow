@@ -148,4 +148,52 @@ Reason: The 2026-09-15 08:00 entry's Files: list omitted this file, even though 
         commit's follow-up (round-5 remediation) also closes 3 further Bash bypasses (dot-source,
         backslash-escape, quote-splitting) in the same file -- see BUGS.md for detail.
 -->
+
+<!-- GOVERNANCE-CHANGE
+Authorized by: Josue — explicit, confirmed in chat ("Si adelante con eso") approving the round-5 fix
+               plan described in this session's gateflow-review round-5 remediation
+Date: 2026-09-15 16:30 (see commit 401d2f7)
+Files: .claude/hooks/protect-self-amendment.sh
+Reason: Correction/backfill. The entry above (2026-09-15 09:38) forward-referenced "this commit's
+        follow-up" without ever citing the commit that actually applied it — that commit is 401d2f7
+        ("fix: GTF-21 close dot-sourcing/backslash/quote-splitting Bash bypasses"), authored at
+        16:30:15, over 3 hours after the entry above was committed. Recorded here per the append-only
+        rule (the entry above is left unchanged) with the actual commit hash, closing the gap
+        gateflow-review round 6 flagged: BUGS.md's own narrative said round 5 was "not yet applied" at
+        a point in time when it already had been.
+-->
+
+<!-- GOVERNANCE-CHANGE
+Authorized by: Josue — explicit, confirmed in chat, style-drift note only (no content authorization
+               needed — this is a correction of this log's own formatting, not a change to a
+               protected file)
+Date: 2026-09-15 16:35
+Files: claude/agents/GOVERNANCE-LOG.md
+Reason: The 2026-09-14 19:40 entry flagged that the 19:20 entry used plain double-hyphens ("--")
+        instead of this file's em-dash ("—") convention, and asked that the drift not repeat. The
+        2026-09-15 08:00 and 09:38 entries both repeated it anyway. Noting the recurrence per the same
+        pattern — not editing those entries, which stay as written.
+-->
+
+<!-- GOVERNANCE-CHANGE
+Authorized by: Josue — explicit, standalone answer to a direct question ("Auditoria estructural ahora
+               (recomendado)") on how to close gateflow-review round 6's 3 CRITICAL findings, plus
+               ("Una ronda adversarial por cambio" + "Checklist de verbos verificados") on where the
+               resulting stopping policy should live and what it says
+Date: 2026-09-15 (round 6 remediation, commit hash to follow once applied)
+Files: .claude/hooks/protect-self-amendment.sh, claude/agents/pe-governance.md
+Reason: Closes gateflow-review GTF-21 round 6's 3 CRITICAL findings (git -c config-injection RCE; git
+        diff/log/show --output arbitrary-file-write; git -C combined bypass) by removing git's
+        log/diff/show/blame/status verbs from protect-self-amendment.sh's unconditional character-
+        allowlist fast path and giving git its own stricter positive grammar
+        (is_safe_git_readonly_command / contains_unsafe_git_invocation), plus removing bat/less/more
+        from that same fast path as a precaution (PAGER/LESSOPEN-driven subprocess surface, no
+        confirmed PoC). Also writes a REVIEW SCOPE / STOPPING POLICY section into the hook's own header
+        comment (one dedicated adversarial round per hook change, plus a verified-safe-verb checklist
+        for any future addition to READ_ONLY_VERBS), per the repo owner's explicit decision on how to
+        stop re-litigating this hook's review scope every round. Separately corrects
+        claude/agents/pe-governance.md's citation of "the 2026-09-15 08:00 entry" (which never mentions
+        the hook script in its own Files: list) to also cite its 09:38 correction — a doc-accuracy fix
+        raised by the same round-6 review, not a change to review-scope logic.
+-->
 ```
