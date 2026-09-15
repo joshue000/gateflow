@@ -282,4 +282,17 @@ Reason: Correction/backfill. The entry above authorized this change before it la
         as a process improvement rather than fixed inline here (this file is not the place to change
         gateflow-review/SKILL.md's own logic, and that change is out of GTF-21's scope).
 -->
+
+<!-- GOVERNANCE-CHANGE
+Authorized by: Josue — explicit, confirmed in chat ("opcion 1, aplica el typo, commit y corremos ronda
+               5") in response to gateflow-review GTF-21 round 4 (of the review file) finding #1
+Date: 2026-09-15 (see commit def8ea3)
+Files: .claude/hooks/protect-self-amendment.sh
+Reason: Comment-only fix — bypass 7's own heading said "round 6's dedicated adversarial re-review"
+        where every other reference to this fix (the CLOSED paragraph in the same header, BUGS.md,
+        this log) correctly says "round 3's." No logic changed; test suite unaffected (48/48, confirmed
+        unchanged). Logged per this file's own stated rule that every applied change to a protected
+        file is recorded here regardless of size or content type — precedent already set by the
+        2026-09-14 14:08 entry (a comment-only artifact removal).
+-->
 ```
