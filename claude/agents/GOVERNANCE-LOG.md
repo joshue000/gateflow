@@ -266,4 +266,20 @@ Reason: Closes gateflow-review round 3's 5 findings (3 CRITICAL, 1 HIGH, 1 MEDIU
         the final dedicated round of Bash-bypass hunting for this ticket — any further bypass class
         found later is a new BUGS.md entry / new ticket, not a reopening of this one.
 -->
+
+<!-- GOVERNANCE-CHANGE
+Authorized by: Josue — explicit, confirmed in chat ("si, dale") for the plan this commit implements
+Date: 2026-09-15 (see commit 17586b0)
+Files: .claude/hooks/protect-self-amendment.sh
+Reason: Correction/backfill. The entry above authorized this change before it landed and promised
+        "commit hash to follow once applied" — that commit is 17586b0 ("fix: GTF-21 close
+        glob/env-var/param-concat bypasses, close hunting"). Recorded here per the append-only rule
+        (the entry above is left unchanged) with the actual commit hash — same pattern as the deda7ef,
+        38fb720, and 6970705 backfills above. This is the 4th time this exact placeholder has been left
+        unfilled at commit time despite the process note in the 6970705 backfill entry above explicitly
+        flagging the 3rd occurrence — the gateflow-review Phase 7 enforcement change that note
+        recommended was never implemented. Per gateflow-review round 4's finding, deferred to TODO.md
+        as a process improvement rather than fixed inline here (this file is not the place to change
+        gateflow-review/SKILL.md's own logic, and that change is out of GTF-21's scope).
+-->
 ```
