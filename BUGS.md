@@ -438,12 +438,68 @@ the hook script protects itself, so this logic change was prepared in an isolate
 25/25 cases pass there, including the 22 pre-existing cases) and is being handed to the repo owner for
 direct manual application, the same as round 4's fix (2) was.
 
-**Status**: resolved. Rounds 1–4 are applied to the tracked `.claude/hooks/protect-self-amendment.sh`
-(commits `deda7ef`, `067f0b9`) and its 22-case test suite passes 22/22 against the tracked file. Round 5
-(dot-source/backslash/quote-splitting) is designed and scratch-verified (25/25) but not yet applied to
-the tracked file, pending the same manual-application step rounds 4's fix (2) required — this is
-expected, not a regression. Per the explicit agreement reached for round 5, this is the LAST round of
-Bash-specific bypass patching: the residual risk that a sufficiently sophisticated, deliberately
-adversarial agent could still find another Bash-text-scanning gap is a formally accepted, permanent,
-documented limitation of static text scanning as a technique — not an open bug to keep chasing. The
-hard guarantee remains the unconditional Edit/Write/MultiEdit block, which has no equivalent gap.
+**Unrelated discovery (2026-09-15, found while re-running `/gateflow-review` for round 6)**:
+`.gateflow/config.json` has no `tierClassifier` object at all, though `tier-classifier.md` reads
+`config.tierClassifier` thresholds unconditionally. Also, `docs/gateflow/reviews/GTF-21-review.md` did
+not exist (tracked or untracked) despite 5 prior review rounds having run for this ticket earlier in
+this session — almost certainly lost in the cross-session `git reset --hard` collision this same
+session hit and recovered from via a dangling-blob `git fsck`/`git cat-file` lookup (that incident was
+never itself written up as a `BUGS.md` entry, only handled live in-session — noted here as the likely
+cause, not as a resolved cross-reference). Neither blocked round 6 (it proceeded with tier DEEP as a
+safe default, and the review file restarted cleanly at Round 1), but both are real gaps worth a
+follow-up: `tierClassifier` needs either real thresholds in `.gateflow/config.json` or an explicit
+documented default in `tier-classifier.md` for when it's absent, and review-file loss on a git
+collision is a durability gap the review process doesn't currently guard against.
+
+**Round-6 findings (gateflow-review, 2026-09-15)**: `pe-bash` found a bypass class one level deeper than
+rounds 1–5: `git` itself, one of `READ_ONLY_VERBS`' entries, violated the hook's own core invariant
+("a safe-character, read-only-verb command cannot write anywhere, period"). Three concrete PoCs, all
+verified in an isolated scratch repo, never run against this repo: (a) **`git -c` config-injection
+RCE** — `git -c diff.external=<script> diff HEAD~1 HEAD` configures git to run an attacker-controlled
+program as its diff driver, full remote-code-execution entirely outside this hook's (or any PreToolUse
+hook's) visibility, and not contingent on the command referencing a protected path at all; (b)
+**`git diff/log/show --output <path>`** (space-separated form — `=`-joined already failed the character
+allowlist) writes the diff/log content to an arbitrary file, so `git diff --no-index --output
+.claude/settings.json <a> <b>` overwrites a protected file directly; (c) **`git -C <dir> diff --output
+<bare-name> ...`** combines both, splitting a protected path's directory from its filename across two
+tokens, defeating the substring check too — the same cd-relative-addressing bypass class as round 4,
+recurring via git's own `-C`/`--git-dir=` instead of a shell builtin.
+
+**Fix (round 6)**: rather than enumerate `-c`/`-C`/`--output`/`--git-dir=` one at a time (which would
+just be a fifth denylist), `git log`/`diff`/`show`/`blame`/`status` were removed from the unconditional
+character-allowlist fast path entirely, and given a dedicated, stricter positive grammar instead
+(`is_safe_git_readonly_command`): the trimmed command must start with an exact literal `git <verb>` —
+no token, flagged or not, between `git` and the verb, which rules out `-c`/`-C`/`--git-dir=` etc. as a
+class — and no token anywhere else in the command may start with `-` except the literal `--` separator,
+which rules out `--output` and any other flag as a class. Any `git` invocation outside that grammar is
+denied outright (`contains_unsafe_git_invocation`), independent of whether a protected path is
+textually present — git's RCE surface doesn't need one. `bat`/`less`/`more` were also removed from the
+fast path (PAGER/LESSOPEN-driven subprocess surface, precautionary, no confirmed PoC) — a protected-file
+read via those verbs now denies via the ordinary substring fallback instead of the removed fast path;
+non-protected reads via those verbs are unaffected. Test suite grew to 33 cases (added: legitimate
+`git diff --`/bare `git status` still allow; the 3 git PoCs above deny; `bat`/`less` on a protected path
+now deny; `bat` on an unprotected path still allows) — all 33 pass against a byte-identical scratch copy
+of the round-6 hook; two pre-existing tests (12, 14) had their asserted deny-reason substring relaxed,
+since the new git check now fires first on those two chained commands (they still deny, just for a
+different, equally valid reason).
+
+**Stopping policy (round 6, explicit repo-owner decision, 2026-09-15)**: after round 6 broke round 5's
+own "this is the last round" assertion within a single round, the repo owner set a checkable stopping
+criterion instead of another assertion, written into `protect-self-amendment.sh`'s own header comment:
+(1) one dedicated adversarial `pe-bash` round per hook change — whatever it finds gets fixed once, in
+that round; a bypass class found later, in an unrelated future session, is a new `BUGS.md` entry / new
+ticket, not an automatic reopen of whatever ticket last touched this file; (2) a verified-safe-verb
+checklist for `READ_ONLY_VERBS` — a verb is added ONLY after confirming it has no config/env/plugin-
+driven subprocess-spawning surface; if that audit is unclear, the verb does not get unconditional-allow
+treatment. This converts "did we chase every hypothetical bypass" (unanswerable, unbounded) into "did
+this round's dedicated pass get fixed" (checkable) as the definition of done for this file.
+
+**Status**: resolved. Rounds 1–5 are applied to the tracked `.claude/hooks/protect-self-amendment.sh` —
+round 1–4's character-allowlist/cd-token/path-normalization logic and the hook's self-protection in
+commit `deda7ef`; the round-5 dot-source/backslash/quote-splitting fix in commit `401d2f7`; banner
+comments synced across the other 5 protected files separately in commit `067f0b9` (that commit does not
+itself touch the hook script). Round 6 (git-invocation grammar + verified-safe-verb checklist + the
+stopping policy above) is designed and scratch-verified (33/33) per the Fix note above, pending the same
+manual-application step every protected-file change to this hook has required since it started
+protecting itself. The hard guarantee remains the unconditional Edit/Write/MultiEdit block, which has no
+equivalent gap and was never in question across any of the 6 rounds.
