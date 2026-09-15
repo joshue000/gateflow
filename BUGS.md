@@ -351,8 +351,10 @@ and this doc update touched only `.claude/hooks/protect-self-amendment.sh`, its 
 doc — none of the 6 self-amendment-protected files — so no `GOVERNANCE-LOG.md` entry applies to either;
 the same is true of round 3's allowlist rewrite.
 
-**Round-4 findings (gateflow-review, 2026-09-15)**: two more gaps, both in the same "enumerate instead
-of allowlist" and "guard doesn't guard itself" families as the rounds above.
+**Round-4 findings (gateflow-review, 2026-09-15 — this is the fix-history label; distinct from
+`docs/gateflow/reviews/GTF-21-review.md`'s own Round 4, the later verify-only pass at SHA `17586b0`)**:
+two more gaps, both in the same "enumerate instead of allowlist" and "guard doesn't guard itself"
+families as the rounds above.
 
 1. **Path-spelling / cd-relative-addressing bypass (CRITICAL).** The Bash branch only ever scrutinized
    a command's character-allowlist/read-only-verb shape when a protected path appeared as an EXACT
@@ -566,8 +568,8 @@ it already covered. (b)+(c) added `--config-env=` and the `GIT_*` env-var prefix
 `contains_unsafe_git_invocation`'s existing checked-token list. (d) generalized `contains_cd_token` to
 also deny a standalone `-C`/`--chdir=`/`--directory=` token on ANY command, not just git — closing the
 class instead of enumerating `env`/`tar`/`make`/`rsync` one at a time. Test suite grew to 48 cases (5
-new, one per finding above) — all 48 pass against a byte-identical scratch copy, including every prior
-round's cases.
+new, one per finding above) — all 48 pass against the tracked file (commit `17586b0`), including every
+prior round's cases.
 
 **This is the closing round for Bash-bypass hunting on this ticket — explicit repo-owner decision,
 2026-09-15 ("si, dale" approving the 5 fixes above as the final dedicated round).** Three consecutive
