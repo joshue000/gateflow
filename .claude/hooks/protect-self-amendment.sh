@@ -19,19 +19,29 @@
 # path is not automatically denied. Read-only inspection of a protected file (e.g.
 # `cat .claude/settings.json`, `git log -- .gateflow/config.json`) is legitimate and
 # common during review/debugging, and blanket-denying it trains reflexive workarounds
-# instead of protecting anything. A prior version of this hook tried to allow that via
-# "read-only verb prefix AND no write-token from a fixed denylist" -- that denylist
-# could never be exhaustive (chaining a read verb with `;`, `&&` etc. and any write
-# mechanism not on the list sailed through). The fix: a command referencing a
-# protected path is allowed through ONLY when (a) it contains NO shell chaining or
-# substitution metacharacter anywhere (`;`, `&&`, `||`, `|`, a backtick, `$(`, `>`,
-# `<`, or an embedded newline) -- checked first, as a blanket disqualifier -- AND
-# (b) the entire trimmed command is a single, unchained invocation of a recognized
-# read-only verb. Anything else -- including any command shape this scan doesn't
-# recognize -- denies. This is a substring/prefix scan, not a shell parser: it cannot
-# see through variable expansion, aliases, or a write hidden behind an unrecognized
-# wrapper command with none of the scanned metacharacters. Fail-closed is the safety
-# net for exactly that gap -- when in doubt, deny.
+# instead of protecting anything. This hook has tried, and abandoned, two DENYLIST
+# designs in a row -- both proved bypassable, and both bypasses are logged in
+# BUGS.md's "self-amendment `ask` gate" Resolved entry:
+#   1. read-only verb prefix AND no write-token from a fixed denylist -- bypassed by
+#      chaining a read verb with `;`/`&&` to a write mechanism not on the list
+#      (e.g. `python3 -c "open(...,'w')"`).
+#   2. read-only verb prefix AND no shell-chaining/substitution metacharacter from a
+#      fixed denylist -- bypassed by the `&` background operator, which was never
+#      added to that list.
+# Any enumerated "list of dangerous things" is structurally incomplete -- there is
+# always one more operator, mechanism, or whitespace character nobody thought to add.
+# The fix is a positive character-class ALLOWLIST instead: a command referencing a
+# protected path is allowed through ONLY when (a) every character in the
+# leading/trailing-trimmed command is an ASCII letter, digit, space, or one of the
+# punctuation characters `- _ / . : ~` -- checked first, as a blanket gate -- AND
+# (b) the entire trimmed command is a single invocation of a recognized read-only
+# verb. Every shell metacharacter this hook cares about (`;`, `&`, `&&`, `||`, `|`,
+# a backtick, `$(`, `>`, `<`, a quote, a tab, a backslash, an embedded newline) falls
+# outside that allowed set by construction, so none of them need to be enumerated --
+# there is no "one more operator" to miss. Anything else -- including any command
+# shape this scan doesn't recognize -- denies. This is a substring/prefix scan, not a
+# shell parser: it cannot see through variable expansion or aliases. Fail-closed is
+# the safety net for exactly that gap -- when in doubt, deny.
 set -euo pipefail
 
 PROTECTED_PATHS="
@@ -61,22 +71,6 @@ wc
 ls
 jq
 "
-
-# Shell metacharacters/chaining or substitution operators. If ANY of these appears
-# anywhere in a command that references a protected path, the command is denied
-# outright, before the read-only verb check even runs -- a single unchained read
-# command has no legitimate need for any of these against a protected path, and
-# their presence means this scan can no longer safely vouch for the rest of the
-# command (see the Bash-command design decision comment above). Single-quoted so
-# the backtick and $( are stored literally, not evaluated at assignment time.
-CHAIN_TOKENS=';
-&&
-||
-|
-`
-$(
->
-<'
 
 deny() {
   jq -n --arg reason "$1" \
@@ -154,30 +148,27 @@ is_read_only_command() {
   return 1
 }
 
-contains_chain_operator() {
-  # $1 = full (untrimmed) command text. True if any shell chaining/substitution/
-  # redirection metacharacter appears anywhere in it.
-  local text="$1" token
-  local old_ifs="$IFS"
-  IFS='
-'
-  for token in $CHAIN_TOKENS; do
-    case "$text" in
-      *"$token"*)
-        IFS="$old_ifs"
-        return 0
-        ;;
-    esac
-  done
-  IFS="$old_ifs"
-  return 1
+trim() {
+  # $1 = command text. Strips only leading/trailing whitespace (space, tab,
+  # newline, CR, FF, VT) -- an embedded newline in the middle of the command is
+  # deliberately left intact so is_safe_char_command below still sees it and
+  # denies. Portable bash 3.2 parameter-expansion trim, no external process.
+  local var="$1"
+  var="${var#"${var%%[![:space:]]*}"}"
+  var="${var%"${var##*[![:space:]]}"}"
+  printf '%s' "$var"
 }
 
-contains_newline() {
-  # $1 = full (untrimmed) command text. True if it spans more than one line.
+is_safe_char_command() {
+  # $1 = trimmed command text. True iff EVERY character in it is an ASCII
+  # letter, digit, space, or one of the safe punctuation characters - _ / . : ~
+  # -- the positive allowlist gate described in the Bash-command design
+  # decision comment above. Any other character anywhere (;, &, &&, ||, |, a
+  # backtick, $(, >, <, a quote, a tab, a backslash, an embedded newline, ...)
+  # fails this by construction, with nothing to enumerate.
   case "$1" in
-    *$'\n'*) return 0 ;;
-    *) return 1 ;;
+    *[!a-zA-Z0-9\ _./:~-]*) return 1 ;;
+    *) return 0 ;;
   esac
 }
 
@@ -211,18 +202,11 @@ case "$tool_name" in
     done
 
     if [ -n "$matched_protected" ]; then
-      if contains_chain_operator "$command_text" || contains_newline "$command_text"; then
-        deny "Bash command references self-amendment-protected file '$matched_protected' and contains shell chaining/substitution/redirection (;, &&, ||, |, a backtick, \$(, >, <, or an embedded newline) -- cannot safely verify the whole command is read-only, failing closed per CLAUDE.md. Explicit human sign-off, logged in claude/agents/GOVERNANCE-LOG.md, is required before this change can be applied."
-      fi
-
-      trimmed_command="$command_text"
-      read -r trimmed_command <<EOF_CMD || true
-$command_text
-EOF_CMD
-      if is_read_only_command "$trimmed_command"; then
-        : # single, unchained invocation of a recognized read-only verb referencing a protected path -- allow
+      trimmed_command="$(trim "$command_text")"
+      if is_safe_char_command "$trimmed_command" && is_read_only_command "$trimmed_command"; then
+        : # character-allowlisted, single invocation of a recognized read-only verb referencing a protected path -- allow
       else
-        deny "Bash command references self-amendment-protected file '$matched_protected' per CLAUDE.md -- it requires explicit human sign-off, logged in claude/agents/GOVERNANCE-LOG.md, before this change can be applied."
+        deny "$(protected_reason "$matched_protected")"
       fi
     fi
     ;;

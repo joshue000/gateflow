@@ -153,17 +153,41 @@ assert_no_deny "11 Bash read-only cat on protected .claude/settings.json" "$actu
 
 # 12. Command-chaining bypass: a read verb chained via ";" with an unrecognized write
 # mechanism (python3) -> deny. This is the exact live-reproduced GTF-21 round-2 bypass.
+# Reason substring is the file path, not the word "chaining" -- round-3's allowlist
+# rewrite collapsed the chaining-specific deny path into the same generic
+# protected_reason() used everywhere else (see protect-self-amendment.sh Finding 1).
 actual="$(run_hook "$(build_bash_stdin t12 'git diff -- .claude/settings.json; python3 -c "print(1)"')")"
-assert_deny "12 Bash chained via ; bypasses read-only allowlist" "$actual" "chaining"
+assert_deny "12 Bash chained via ; bypasses read-only allowlist" "$actual" ".claude/settings.json"
 
 # 13. Command-chaining bypass via "&&" -> deny.
 actual="$(run_hook "$(build_bash_stdin t13 "cat .claude/settings.json && echo done")")"
-assert_deny "13 Bash chained via && bypasses read-only allowlist" "$actual" "chaining"
+assert_deny "13 Bash chained via && bypasses read-only allowlist" "$actual" ".claude/settings.json"
 
 # 14. Newline-separated two-line command: line 1 is a read verb, line 2 references a
-# protected path -> deny. Exercises contains_newline, not just contains_chain_operator.
+# protected path -> deny. Exercises is_safe_char_command's embedded-newline rejection.
 actual="$(run_hook "$(build_bash_stdin t14 "$(printf 'git status\ncat .claude/settings.json')")")"
-assert_deny "14 Bash newline-separated command referencing protected path" "$actual" "newline"
+assert_deny "14 Bash newline-separated command referencing protected path" "$actual" ".claude/settings.json"
+
+# 15. Background-operator bypass ("&"): a read verb backgrounded via "&" with an
+# unrecognized write mechanism -> deny. This is the exact live-reproduced GTF-21
+# round-3 bypass -- "&" was never on the round-2 CHAIN_TOKENS denylist.
+actual="$(run_hook "$(build_bash_stdin t15 'cat .claude/settings.json & python3 -c "open(1,0)"')")"
+assert_deny "15 Bash backgrounded via & bypasses read-only allowlist" "$actual" ".claude/settings.json"
+
+# 16. Literal tab character between the verb and the protected path -> deny. A tab is
+# whitespace but not the ASCII space the allowlist admits.
+actual="$(run_hook "$(build_bash_stdin t16 "$(printf 'cat\t.claude/settings.json')")")"
+assert_deny "16 Bash literal tab character" "$actual" ".claude/settings.json"
+
+# 17. Backslash line-continuation splitting the command across two lines -> deny.
+actual="$(run_hook "$(build_bash_stdin t17 "$(printf 'cat \\\n.claude/settings.json')")")"
+assert_deny "17 Bash backslash line-continuation" "$actual" ".claude/settings.json"
+
+# 18. Leading/trailing whitespace around an otherwise-safe read command is trimmed and
+# still allows -- the character allowlist applies to the trimmed command, not proof
+# that trimming itself introduces a bypass.
+actual="$(run_hook "$(build_bash_stdin t18 "   cat .claude/settings.json   ")")"
+assert_no_deny "18 Bash leading/trailing whitespace around safe read still allows" "$actual"
 
 # ---- summary ------------------------------------------------------------
 
