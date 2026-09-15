@@ -284,6 +284,22 @@ Reason: Correction/backfill. The entry above authorized this change before it la
 -->
 
 <!-- GOVERNANCE-CHANGE
+Authorized by: Josue — explicit, standalone answer ("Auditoria estructural ahora (recomendado)") to
+               the same question authorizing the 2026-09-15 08:00 entry above
+Date: 2026-09-15 (see commit 067f0b9)
+Files: claude/agents/pe-governance.md, claude/skills/_gateflow-shared/pe-agent-template.md,
+       claude/skills/gateflow-review/SKILL.md
+Reason: Correction/backfill. The 2026-09-15 08:00 entry's Files: list happens to be the union of what
+        deda7ef and 067f0b9 together touched, but its Reason text only describes the concept of
+        expanding protection to 6 files — it never names 067f0b9 by hash, unlike deda7ef (backfilled by
+        the 09:38 entry). 067f0b9 ("docs: GTF-21 update self-amendment banners to 6 files") is the
+        commit that actually applied the banner-comment sync across these 3 files, matching the 08:00
+        entry's stated intent. Recorded here per the append-only rule (the 08:00 entry is left
+        unchanged) — same gap class as the deda7ef/401d2f7/38fb720/6970705/17586b0 backfills above,
+        found by gateflow-review round 6 (of the review file).
+-->
+
+<!-- GOVERNANCE-CHANGE
 Authorized by: Josue — explicit, confirmed in chat ("opcion 1, aplica el typo, commit y corremos ronda
                5") in response to gateflow-review GTF-21 round 4 (of the review file) finding #1
 Date: 2026-09-15 (see commit def8ea3)
