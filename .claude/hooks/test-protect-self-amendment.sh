@@ -350,6 +350,39 @@ assert_deny "42 Bash git --work-tree= global flag denies" "$actual"
 actual="$(run_hook "$(build_bash_stdin t43 "git --exec-path=/tmp/evil status")")"
 assert_deny "43 Bash git --exec-path= global flag denies" "$actual"
 
+# 44. Round-3 re-review bypass: shell glob/wildcard expansion (*, ?, [) is never
+# expanded by this hook's static text match but IS expanded by the real shell at
+# execution time. Confirmed live before the fix: `printf PWNED >
+# .claude/settings.????` wrote to the real settings.json in an isolated scratch copy
+# while the hook emitted no deny.
+actual="$(run_hook "$(build_bash_stdin t44 "printf PWNED > .claude/settings.????")")"
+assert_deny "44 Bash glob-wildcard path-expansion bypass" "$actual"
+
+# 45. Round-3 re-review bypass: git --config-env= has identical config-injection
+# power to -c but reads its value from an env var, never containing the literal
+# "-c" token.
+actual="$(run_hook "$(build_bash_stdin t45 "git --config-env=diff.external=EVIL diff HEAD~1 HEAD")")"
+assert_deny "45 Bash git --config-env= config-injection bypass" "$actual"
+
+# 46. Round-3 re-review bypass: GIT_DIR= (and GIT_WORK_TREE=/GIT_CONFIG_COUNT=/
+# GIT_CONFIG_KEY_*/GIT_CONFIG_VALUE_*) env-var prefixes achieve the same
+# redirection/config-injection as -C/--git-dir=/-c with zero flag tokens present.
+actual="$(run_hook "$(build_bash_stdin t46 "GIT_DIR=/tmp/evil/.git git status")")"
+assert_deny "46 Bash GIT_DIR= env-var redirection bypass" "$actual"
+
+# 47. Round-3 re-review bypass: `env -C <dir>` (and other external tools' own
+# cwd-redirect flags -- tar -C, make -C, rsync, etc.) is invisible to the
+# cd/pushd/source word check. Confirmed live before the fix: `env -C <dirB> cp
+# <payload> bare.txt` placed the file inside the redirected directory.
+actual="$(run_hook "$(build_bash_stdin t47 "env -C .claude cp /tmp/payload.txt settings.json")")"
+assert_deny "47 Bash env -C cwd-redirect bypass" "$actual"
+
+# 48. Round-3 re-review bypass: two adjacent bare \$var references concatenate into
+# the real protected filename at shell-expansion time with no quote or backslash
+# character present at all.
+actual="$(run_hook "$(build_bash_stdin t48 "part1=settings.js; part2=on; printf PWNED > .claude/\$part1\$part2")")"
+assert_deny "48 Bash parameter-concatenation respelling bypass" "$actual"
+
 # ---- summary ------------------------------------------------------------
 
 echo "----"
