@@ -114,4 +114,14 @@ Reason: Correction to the entry above (2026-09-14 18:46). Its citation of
         Phase 3 approval gate), which remains valid and sufficient on its own -- consistent with
         every other entry in this file's History, none of which cite an uncommitted file.
 -->
+
+<!-- GOVERNANCE-CHANGE
+Authorized by: Josue — explicit, confirmed in chat ("si, remediar") in response to gateflow-review
+               GTF-21 round 2 finding #5
+Date: 2026-09-14 19:40
+Files: claude/agents/GOVERNANCE-LOG.md
+Reason: Cosmetic correction. The 2026-09-14 19:20 entry above used plain double-hyphens instead of
+        this file's consistent em-dash style in two places. Per the append-only rule, that entry is
+        left unchanged; noting the drift here so it isn't repeated in future entries.
+-->
 ```
