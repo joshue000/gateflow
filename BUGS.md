@@ -517,7 +517,7 @@ literal-lowercase-only (only the one exact trusted spelling fast-paths; a capita
 the conservative direction). Test suite grew to 37 cases (added: capitalized `Git -c` RCE denies;
 capitalized protected-path directory segment via Bash denies; capitalized `Edit` file_path denies;
 capitalized-but-otherwise-legitimate `Git diff --` on a protected path now denies too, confirming the
-conservative direction) — all 37 pass against the tracked file (commit hash to follow once applied).
+conservative direction) — all 37 pass against the tracked file (commit `6970705`).
 Also documented in the header's "Known, accepted over-blocking" section: `contains_disallowed_escape_char`
 denies ANY command containing a quote/backslash character regardless of protected-path relevance — the
 single most common source of over-blocking in practice (an ordinary quoted `grep`/`rg` pattern), omitted
@@ -539,18 +539,50 @@ substring match, since the target has to be named directly for this hook to care
 --output ...` is still caught by the `-C` check (folds to `-c` post-lowercasing). Test suite grew to 43
 cases (added: `git add`/`git commit -F` on an unprotected file now allow; `git add` on a protected path
 still denies; `--git-dir=`/`--work-tree=`/`--exec-path=` all deny) — all 43 pass against the tracked
-file (commit hash to follow once applied), including all 3 original round-6 PoCs (28-30) and all 4
-case-insensitivity cases (34-37) confirmed still denying under the narrower check.
+file (commit `6970705`), including all 3 original round-6 PoCs (28-30) and all 4 case-insensitivity
+cases (34-37) confirmed still denying under the narrower check.
 
-**Status**: resolved. Rounds 1–6 are applied to the tracked `.claude/hooks/protect-self-amendment.sh` —
-round 1–4's character-allowlist/cd-token/path-normalization logic and the hook's self-protection in
-commit `deda7ef`; the round-5 dot-source/backslash/quote-splitting fix in commit `401d2f7`; banner
-comments synced across the other 5 protected files separately in commit `067f0b9` (that commit does not
-itself touch the hook script); round 6's git-invocation grammar + stopping policy in commit `38fb720`.
-The round-6-re-review case-insensitivity fix, plus the git-global-flag-scope narrowing that replaced the
-first version's over-broad "any non-grammar git subcommand" denial, is scratch-verified (43/43) pending
-the same manual-application step every protected-file change to this hook has required since it started
-protecting itself. The hard guarantee is the unconditional Edit/Write/MultiEdit block — this round is
-the first to find (and fix) a real gap in it, via the case-sensitivity issue above, so "no equivalent
-gap" no longer describes that path's history accurately; it describes the current, fixed state, not an
-invariant that held throughout.
+**Round-3 re-review findings (gateflow-review, 2026-09-15)**: the STOPPING POLICY's "one dedicated
+adversarial round" was applied to the narrowed `contains_unsafe_git_invocation` (never reviewed before
+this pass), and `pe-bash` found 5 more gaps — 3 CRITICAL, 1 HIGH, 1 MEDIUM — 3 of which are NOT
+git-specific at all, the first time a finding in this whole history wasn't about git or a fixed-spelling
+path at all: (a) **glob/wildcard expansion** (`*`, `?`, `[`) — the hook's static text never expands a
+glob, but the real shell does at execution time, so `printf PWNED > .claude/settings.????` wrote the
+real file while the hook saw no literal match; (b) **`git --config-env=`** — identical config-injection
+power to `-c`, reads its value from an env var instead of the command line, so it never contains the
+literal `-c` token; (c) **`GIT_DIR=`/`GIT_WORK_TREE=`/`GIT_CONFIG_COUNT=`+`GIT_CONFIG_KEY_<n>=`/
+`GIT_CONFIG_VALUE_<n>=`** environment-variable prefixes achieve the same redirection/injection as the
+checked flags with zero flag tokens in the command text; (d) **`env -C <dir>`** (and any other external
+tool with its own cwd-redirect flag — `tar -C`, `make -C`, `rsync`, etc.) is invisible to the
+cd/pushd/source word check; (e) **bare parameter concatenation** (`$part1$part2`) — two adjacent `$var`
+references concatenate into the real protected filename at shell-expansion time with no quote or
+backslash character present at all.
+
+**Fix (round 3 re-review)**: (a)+(e) extended `contains_disallowed_escape_char` to also flag `*`, `?`,
+`[`, and bare `$` — the same "can't see through shell reinterpretation" category as the backslash/quote
+it already covered. (b)+(c) added `--config-env=` and the `GIT_*` env-var prefixes to
+`contains_unsafe_git_invocation`'s existing checked-token list. (d) generalized `contains_cd_token` to
+also deny a standalone `-C`/`--chdir=`/`--directory=` token on ANY command, not just git — closing the
+class instead of enumerating `env`/`tar`/`make`/`rsync` one at a time. Test suite grew to 48 cases (5
+new, one per finding above) — all 48 pass against a byte-identical scratch copy, including every prior
+round's cases.
+
+**This is the closing round for Bash-bypass hunting on this ticket — explicit repo-owner decision,
+2026-09-15 ("si, dale" approving the 5 fixes above as the final dedicated round).** Three consecutive
+dedicated adversarial passes (round 6, its re-review, and this one) each found a genuinely new bypass
+CLASS, not a new spelling of an old one — exactly the pattern the hook's own "LIMITS OF TEXT-BASED BASH
+SCANNING" section predicted from the start. Per the STOPPING POLICY (one dedicated round per hook
+change, whatever it finds gets fixed once, in that round): this round's 5 findings are fixed, in this
+round. Any further bypass class discovered later, in an unrelated future session, is a new BUGS.md entry
+/ new ticket — it does not reopen this one. The unconditional Edit/Write/MultiEdit block remains the
+hard, non-heuristic guarantee; the Bash branch remains best-effort, static-scan hardening against every
+documented class above, not a claim of completeness against a sufficiently determined adversary — that
+residual gap is now, finally, treated as the accepted, permanent, documented limitation it always was.
+
+**Status**: resolved. Rounds 1–6, the round-6 re-review (case-insensitivity + git-scope narrowing), and
+this round-3 re-review (glob/config-env/GIT_*-env-var/env–C/param-concat) are all applied to the tracked
+`.claude/hooks/protect-self-amendment.sh` — `deda7ef`, `401d2f7`, `067f0b9` (banners only), `38fb720`,
+`6970705`, and this round's commit (hash to follow once applied — see the note in GOVERNANCE-LOG.md's
+round-closing checklist below about verifying this line gets updated). The hard guarantee is the
+unconditional Edit/Write/MultiEdit block, still the only path with no equivalent gap found across 7
+rounds of dedicated adversarial review.
