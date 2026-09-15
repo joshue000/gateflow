@@ -257,33 +257,67 @@ early-return almost always fired first).
 ### CRITICAL: self-amendment `ask` gate doesn't reliably enforce at all under `defaultMode: auto` — not just a Bash coverage gap
 
 **Where found**: gateflow (this repo), gateflow-review round 1, 2026-09-14 (Bash-coverage gap first
-found); confirmed broader and more severe via a live test, 2026-09-14, this session (after a restart,
-testing the shipped GTF-3 protection directly).
+found); confirmed broader and more severe via a live test, 2026-09-14, same session (after a restart,
+testing the shipped GTF-3 protection directly); the hook's own first fix then over-blocked legitimate
+reads, found and fixed the same day; a command-chaining bypass in that fix was then found by
+gateflow-review round 2, 2026-09-14.
 
-**Symptom / Root cause**: originally scoped as "Bash isn't covered" — `.claude/settings.json`'s
-`permissions.ask` array only lists `Edit(...)` rules for the 5 self-amendment-protected files, so a
-write via `Bash` (shell redirection, `tee`, `sed -i`) never triggers the gate at all. Live-testing
-revealed it's worse than that: a direct `Edit` call against `claude/agents/pe-governance.md` — a path
-*explicitly listed* in `ask` — completed with zero prompt or pause, to either the model or the user.
-Root cause: `~/.claude/settings.json` has `permissions.defaultMode: "auto"`, and in that mode a
-classifier reviews every action *in place of* the human — it does not surface the configured `ask`
-rule as a prompt, it substitutes its own judgment.
+**Symptom / Root cause (original bug)**: originally scoped as "Bash isn't covered" —
+`.claude/settings.json`'s `permissions.ask` array only lists `Edit(...)` rules for the 5
+self-amendment-protected files, so a write via `Bash` (shell redirection, `tee`, `sed -i`) never
+triggered the gate at all. Live-testing revealed it was worse than that: a direct `Edit` call against
+`claude/agents/pe-governance.md` — a path *explicitly listed* in `ask` — completed with zero prompt or
+pause, to either the model or the user. Root cause: `~/.claude/settings.json` has
+`permissions.defaultMode: "auto"`, and in that mode a classifier reviews every action *in place of* the
+human — it does not surface the configured `ask` rule as a prompt, it substitutes its own judgment.
 
-**Impact**: the self-amendment protection shipped in GTF-3 did not reliably function as documented for
-this repo owner's own default permission mode (`auto`) — effectively decorative under `auto` mode as
-originally implemented.
-
-**Fix**: GTF-21 — a `PreToolUse` hook (`.claude/hooks/protect-self-amendment.sh`) inspecting
+**Fix (round 1)**: GTF-21 — a `PreToolUse` hook (`.claude/hooks/protect-self-amendment.sh`) inspecting
 `Edit`/`Write`/`Bash`/`MultiEdit`/`NotebookEdit` calls against the 5 protected paths, wired into
 `.claude/settings.json`'s new `hooks.PreToolUse` entry. Hooks are enforced by the Claude Code harness
-itself, before the tool call proceeds — independent of permission mode — unlike `permissions.ask`,
-which this bug proved is bypassable under `auto`. `permissions.ask` was kept as a defense-in-depth
-fallback, unchanged. Implemented TDD (8 test cases in `.claude/hooks/test-protect-self-amendment.sh`,
-red before the hook script existed, green after).
+itself, before the tool call proceeds — independent of permission mode — unlike `permissions.ask`, which
+this bug proved is bypassable under `auto`. `permissions.ask` was kept as a defense-in-depth fallback,
+unchanged. Implemented TDD (8 test cases, red before the hook script existed, green after).
 
-**Verified**: 2026-09-14 18:48 -05, live re-test of the exact original reproduction — a direct `Edit`
-call against `claude/agents/pe-governance.md`, no prior authorization — correctly blocked, error citing
-`CLAUDE.md` and `GOVERNANCE-LOG.md`. The 8/8 automated test suite also passes. Commits: `3034161`
-(tests), `1b2f392` (hook), `5421826` (wiring), `fd20f25` (governance log entry).
+**Over-blocking regression (round 1 follow-up, same day)**: the first hook implementation had no
+read/write distinction for `Bash` at all, so legitimate read-only inspection of a protected file (e.g.
+`cat .claude/settings.json`, `git log -- .gateflow/config.json`) was denied right alongside genuine
+writes — correct in the fail-closed sense, but broad enough to train reflexive workarounds instead of
+protecting anything. Fixed same day: a read-only-verb allowlist (`git log`/`git diff`/`cat`/`grep`/etc.)
+gated by a write-token denylist (redirects, `tee`, `sed -i`, `cp`/`mv`/`rm`, a pipe, ...) — a command
+matching a read verb AND containing none of the write tokens was allowed through. Also fixed in the same
+pass: the hook now fails closed on malformed/non-object stdin instead of silently passing. Test suite
+grew to 11 cases (added: malformed-stdin fail-closed, absolute-path `Edit`, `NotebookEdit` best-guess,
+read-only-`cat`-allow).
+
+**Command-chaining bypass (round 2, gateflow-review, 2026-09-14)**: the read-verb-allowlist +
+write-token-denylist approach was itself bypassable — chaining a whitelisted read verb with `;`, `&&`,
+`||`, a pipe, a backtick, `$(`, or an embedded newline, followed by any write mechanism NOT enumerated in
+the denylist (e.g. `perl -pi`, `curl --output`, `python3 -c "open(...,'w')"`), sailed straight through.
+Confirmed live: `git diff -- .claude/settings.json; python3 -c "print(1)"` was allowed. Root cause: a
+fixed write-token denylist can never be exhaustive — it enumerates known write mechanisms instead of
+recognizing the shape (chaining) that makes any of them reachable from an otherwise-trusted read verb.
+
+**Fix (round 2)**: replaced the denylist approach entirely. A Bash command referencing a protected path
+is now denied outright, before the read-verb check even runs, if it contains ANY shell chaining/
+substitution/redirection metacharacter anywhere (`;`, `&&`, `||`, `|`, a backtick, `$(`, `>`, `<`, or an
+embedded newline) — a blanket disqualifier, not an enumerated list of write mechanisms. Only past that
+gate does the read-only-verb check apply, and only to the entire trimmed command matching a single,
+unchained invocation of a recognized verb. `WRITE_TOKENS`/`contains_write_token` were dropped entirely —
+redundant once chaining itself is the gate (a single unchained `sed -i ... .claude/settings.json` already
+fails the read-verb match and correctly denies on its own). Test suite grew to 14 cases (added: `;`-chained
+bypass, `&&`-chained bypass, newline-separated two-line command).
+
+**Verified**: 2026-09-14, live re-test of the exact original reproduction — a direct `Edit` call against
+`claude/agents/pe-governance.md`, no prior authorization — correctly blocked, error citing `CLAUDE.md` and
+`GOVERNANCE-LOG.md`. The exact round-2 bypass reproduction
+(`git diff -- .claude/settings.json; python3 -c "print(1)"`) now correctly denies with a
+chaining-specific reason. Legitimate single reads (`cat .claude/settings.json`,
+`git log -- .claude/settings.json`) still allow; a direct single-command write
+(`sed -i ... .claude/settings.json`) still denies. Full 14/14 automated test suite passes. Commits:
+`3034161` (round-1 tests), `1b2f392` (round-1 hook), `5421826` (round-1 wiring), `fd20f25` (round-1
+governance log entry), `92e4c76` (moved to Resolved), `c88d170` (round-1 over-blocking fix — fail-closed
++ read/write distinction), `27a5bcd` (round-1 regression tests), `b4bf56f` (untracked-citation
+correction); round-2's command-chaining fix and this update are captured in
+`claude/agents/GOVERNANCE-LOG.md`'s entry for that change.
 
 **Status**: resolved.
