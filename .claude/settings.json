@@ -5,7 +5,8 @@
       "Edit(claude/skills/gateflow-review/SKILL.md)",
       "Edit(claude/skills/_gateflow-shared/pe-agent-template.md)",
       "Edit(.claude/settings.json)",
-      "Edit(.gateflow/config.json)"
+      "Edit(.gateflow/config.json)",
+      "Edit(.claude/hooks/protect-self-amendment.sh)"
     ]
   },
   "hooks": {
