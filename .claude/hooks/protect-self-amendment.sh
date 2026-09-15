@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # PreToolUse hook -- blocks Edit/Write/Bash/MultiEdit/NotebookEdit calls that would
 # modify one of the 5 self-amendment-protected files, unconditionally and independent
-# of permissions.defaultMode. See docs/gateflow/plans/GTF-21-plan.md for the full
-# rationale (why "deny" not "ask", why permissions.ask is kept as a fallback).
+# of permissions.defaultMode. Full history (why "deny" not "ask", the defaultMode:auto
+# bypass that motivated this hook, and the later command-chaining bypass fix) is in
+# BUGS.md's "self-amendment `ask` gate" Resolved entry and in
+# claude/agents/GOVERNANCE-LOG.md. permissions.ask is kept as a defense-in-depth
+# fallback alongside this hook, not replaced by it.
 #
 # Bash 3.2 portable (macOS ships 3.2) -- no mapfile, readarray, declare -A, or
 # ${var,,}/${var^^} case conversion.
@@ -16,14 +19,19 @@
 # path is not automatically denied. Read-only inspection of a protected file (e.g.
 # `cat .claude/settings.json`, `git log -- .gateflow/config.json`) is legitimate and
 # common during review/debugging, and blanket-denying it trains reflexive workarounds
-# instead of protecting anything. So: a command referencing a protected path is
-# allowed through ONLY when it (a) matches a known read-only verb prefix AND (b)
-# contains none of a defined set of write-signaling tokens (redirects, tee, sed -i,
-# cp/mv/rm, a pipe, etc). Anything that doesn't cleanly clear both checks -- including
-# any command shape this scan doesn't recognize -- still denies. This is a substring/
-# prefix scan, not a shell parser: it cannot see through variable expansion, command
-# substitution, aliases, or a write hidden behind an unrecognized wrapper command.
-# Fail-closed is the safety net for exactly that gap -- when in doubt, deny.
+# instead of protecting anything. A prior version of this hook tried to allow that via
+# "read-only verb prefix AND no write-token from a fixed denylist" -- that denylist
+# could never be exhaustive (chaining a read verb with `;`, `&&` etc. and any write
+# mechanism not on the list sailed through). The fix: a command referencing a
+# protected path is allowed through ONLY when (a) it contains NO shell chaining or
+# substitution metacharacter anywhere (`;`, `&&`, `||`, `|`, a backtick, `$(`, `>`,
+# `<`, or an embedded newline) -- checked first, as a blanket disqualifier -- AND
+# (b) the entire trimmed command is a single, unchained invocation of a recognized
+# read-only verb. Anything else -- including any command shape this scan doesn't
+# recognize -- denies. This is a substring/prefix scan, not a shell parser: it cannot
+# see through variable expansion, aliases, or a write hidden behind an unrecognized
+# wrapper command with none of the scanned metacharacters. Fail-closed is the safety
+# net for exactly that gap -- when in doubt, deny.
 set -euo pipefail
 
 PROTECTED_PATHS="
@@ -54,26 +62,21 @@ ls
 jq
 "
 
-# Substrings anywhere in the command that signal a write/mutation -- if any is
-# present, the read-only allowlist never applies, regardless of the leading verb.
-WRITE_TOKENS='>
-tee
-sed -i
-cp
-mv
-rm
-dd
-truncate
-install
-rsync
-patch
-git checkout --
-git restore
-curl -o
-curl -O
-wget -O
-ln -sf
-|'
+# Shell metacharacters/chaining or substitution operators. If ANY of these appears
+# anywhere in a command that references a protected path, the command is denied
+# outright, before the read-only verb check even runs -- a single unchained read
+# command has no legitimate need for any of these against a protected path, and
+# their presence means this scan can no longer safely vouch for the rest of the
+# command (see the Bash-command design decision comment above). Single-quoted so
+# the backtick and $( are stored literally, not evaluated at assignment time.
+CHAIN_TOKENS=';
+&&
+||
+|
+`
+$(
+>
+<'
 
 deny() {
   jq -n --arg reason "$1" \
@@ -88,7 +91,7 @@ command -v jq >/dev/null 2>&1 || {
 
 input="$(cat)"
 
-echo "$input" | jq -e . >/dev/null 2>&1 \
+printf '%s' "$input" | jq -e . >/dev/null 2>&1 \
   || deny "protect-self-amendment: internal error -- malformed stdin (JSON parse failure), failing closed"
 
 printf '%s' "$input" | jq -e 'type == "object"' >/dev/null 2>&1 \
@@ -151,13 +154,14 @@ is_read_only_command() {
   return 1
 }
 
-contains_write_token() {
-  # $1 = full (untrimmed) command text.
+contains_chain_operator() {
+  # $1 = full (untrimmed) command text. True if any shell chaining/substitution/
+  # redirection metacharacter appears anywhere in it.
   local text="$1" token
   local old_ifs="$IFS"
   IFS='
 '
-  for token in $WRITE_TOKENS; do
+  for token in $CHAIN_TOKENS; do
     case "$text" in
       *"$token"*)
         IFS="$old_ifs"
@@ -169,6 +173,14 @@ contains_write_token() {
   return 1
 }
 
+contains_newline() {
+  # $1 = full (untrimmed) command text. True if it spans more than one line.
+  case "$1" in
+    *$'\n'*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 case "$tool_name" in
   Edit|Write|MultiEdit)
     file_path="$(printf '%s' "$input" | jq -r '(.tool_input.file_path)? // empty')"
@@ -178,9 +190,9 @@ case "$tool_name" in
     check_file_path_tool "$file_path"
     ;;
   NotebookEdit)
-    # NotebookEdit's tool_input field name is unconfirmed (see plan §1.3/§5). Best-guess
-    # file_path, checked defensively; a notebook (.ipynb) structurally can't match any of
-    # the 5 (.md/.json) protected paths anyway, so a miss here is not a protection gap.
+    # NotebookEdit's tool_input field name is unconfirmed. Best-guess file_path, checked
+    # defensively; a notebook (.ipynb) structurally can't match any of the 5 (.md/.json)
+    # protected paths anyway, so a miss here is not a protection gap.
     file_path="$(printf '%s' "$input" | jq -r '(.tool_input.file_path)? // empty')"
     check_file_path_tool "$file_path"
     ;;
@@ -199,12 +211,16 @@ case "$tool_name" in
     done
 
     if [ -n "$matched_protected" ]; then
+      if contains_chain_operator "$command_text" || contains_newline "$command_text"; then
+        deny "Bash command references self-amendment-protected file '$matched_protected' and contains shell chaining/substitution/redirection (;, &&, ||, |, a backtick, \$(, >, <, or an embedded newline) -- cannot safely verify the whole command is read-only, failing closed per CLAUDE.md. Explicit human sign-off, logged in claude/agents/GOVERNANCE-LOG.md, is required before this change can be applied."
+      fi
+
       trimmed_command="$command_text"
       read -r trimmed_command <<EOF_CMD || true
 $command_text
 EOF_CMD
-      if is_read_only_command "$trimmed_command" && ! contains_write_token "$command_text"; then
-        : # recognized safe read-only command referencing a protected path -- allow
+      if is_read_only_command "$trimmed_command"; then
+        : # single, unchained invocation of a recognized read-only verb referencing a protected path -- allow
       else
         deny "Bash command references self-amendment-protected file '$matched_protected' per CLAUDE.md -- it requires explicit human sign-off, logged in claude/agents/GOVERNANCE-LOG.md, before this change can be applied."
       fi

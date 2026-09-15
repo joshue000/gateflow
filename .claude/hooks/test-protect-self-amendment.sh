@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Test harness for protect-self-amendment.sh. Bash 3.2 portable, no bats/shellspec
 # dependency (matches this repo's "no new dependency without justification" rule).
-# Builds the exact stdin JSON a real PreToolUse hook invocation receives (per
-# docs/gateflow/plans/GTF-21-plan.md §1.3), pipes it to the hook, and asserts on
-# the JSON shape with jq. Prints PASS/FAIL per case; exits non-zero if any failed.
+# Builds the stdin JSON shape a real PreToolUse hook invocation receives, pipes it
+# to the hook, and asserts on the JSON shape with jq. Prints PASS/FAIL per case;
+# exits non-zero if any failed. Background/history: BUGS.md's "self-amendment `ask`
+# gate" Resolved entry and claude/agents/GOVERNANCE-LOG.md.
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -149,6 +150,20 @@ assert_deny "10 NotebookEdit best-guess protected .gateflow/config.json" "$actua
 # read-vs-write distinction so a future change can't silently regress it either way.
 actual="$(run_hook "$(build_bash_stdin t11 "cat .claude/settings.json")")"
 assert_no_deny "11 Bash read-only cat on protected .claude/settings.json" "$actual"
+
+# 12. Command-chaining bypass: a read verb chained via ";" with an unrecognized write
+# mechanism (python3) -> deny. This is the exact live-reproduced GTF-21 round-2 bypass.
+actual="$(run_hook "$(build_bash_stdin t12 'git diff -- .claude/settings.json; python3 -c "print(1)"')")"
+assert_deny "12 Bash chained via ; bypasses read-only allowlist" "$actual" "chaining"
+
+# 13. Command-chaining bypass via "&&" -> deny.
+actual="$(run_hook "$(build_bash_stdin t13 "cat .claude/settings.json && echo done")")"
+assert_deny "13 Bash chained via && bypasses read-only allowlist" "$actual" "chaining"
+
+# 14. Newline-separated two-line command: line 1 is a read verb, line 2 references a
+# protected path -> deny. Exercises contains_newline, not just contains_chain_operator.
+actual="$(run_hook "$(build_bash_stdin t14 "$(printf 'git status\ncat .claude/settings.json')")")"
+assert_deny "14 Bash newline-separated command referencing protected path" "$actual" "newline"
 
 # ---- summary ------------------------------------------------------------
 
