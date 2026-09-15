@@ -196,4 +196,39 @@ Reason: Closes gateflow-review GTF-21 round 6's 3 CRITICAL findings (git -c conf
         the hook script in its own Files: list) to also cite its 09:38 correction — a doc-accuracy fix
         raised by the same round-6 review, not a change to review-scope logic.
 -->
+
+<!-- GOVERNANCE-CHANGE
+Authorized by: Josue — explicit, confirmed in chat ("Auditoria estructural ahora (recomendado)") for
+               the plan this commit implements
+Date: 2026-09-15 (see commit 38fb720)
+Files: .claude/hooks/protect-self-amendment.sh, claude/agents/pe-governance.md
+Reason: Correction/backfill. The entry above authorized round 6's change before it landed and promised
+        "commit hash to follow once applied" — that commit is 38fb720 ("fix: GTF-21 close
+        git-invocation RCE bypasses, add stopping policy"). Recorded here per the append-only rule (the
+        entry above is left unchanged) with the actual commit hash, same pattern as the earlier 401d2f7
+        backfill for round 5.
+-->
+
+<!-- GOVERNANCE-CHANGE
+Authorized by: Josue — explicit, confirmed in chat ("si, dale, resolvamos") in response to
+               gateflow-review GTF-21 round 2 (of the review file; 7th real review pass this session)
+               finding #1 (case-insensitivity bypass, CRITICAL) and findings #2-6
+Date: 2026-09-15 (round 6 re-review remediation, commit hash to follow once applied)
+Files: .claude/hooks/protect-self-amendment.sh
+Reason: Closes gateflow-review round 2's CRITICAL finding: every protected-path/git-invocation
+        comparison in protect-self-amendment.sh (is_protected_path, contains_unsafe_git_invocation, the
+        PROTECTED_PATHS substring loop) was case-sensitive, but this machine's default filesystem
+        (macOS APFS) is case-insensitive-but-preserving, reopening round 6's RCE fix via one
+        capitalized letter and also breaking the Edit/Write/MultiEdit path's claimed
+        non-heuristic guarantee. Fixed by lowercasing both sides of every comparison before matching,
+        without loosening is_safe_git_readonly_command's ALLOW grammar. Also documents the
+        quote/backslash path-independent over-blocking case in the header (finding #5) and defines
+        "round" in the STOPPING POLICY section (finding #6) — both doc-accuracy fixes from the same
+        review round. Additionally narrows contains_unsafe_git_invocation itself, applied and
+        authorized in the same pass ("haz el cambio"): the first version denied ANY git subcommand
+        outside a 5-verb read-only grammar, which blocked ordinary git add/commit on unprotected files
+        -- not a governance-scope change (still the same 6 protected files, same authority model), a
+        correctness fix to an unintended over-block discovered live in this session. See BUGS.md's
+        round-6 re-review entry for detail.
+-->
 ```
