@@ -217,6 +217,26 @@ assert_deny "21 Bash cd-then-write bare filename bypass" "$actual"
 actual="$(run_hook "$(build_bash_stdin t22 "cd /tmp && ls")")"
 assert_deny "22 Bash cd-then-unrelated-read denies (accepted tradeoff)" "$actual"
 
+# 23. Round-5 bypass: dot-source (the POSIX alias for "source") -- never matched by the
+# old cd/pushd/source word check since "." is a punctuation character, not a word ->
+# deny. Confirmed live before the fix: `. /path/to/malicious.sh` was ALLOWED.
+actual="$(run_hook "$(build_bash_stdin t23 ". /path/to/malicious.sh")")"
+assert_deny "23 Bash dot-source bypass" "$actual"
+
+# 24. Round-5 bypass: a backslash-escape respelling of a protected path -- bash strips
+# the backslash and resolves this to the real path at execution time, but the static
+# substring check never sees a contiguous ".claude/settings.json" match -> deny.
+# Confirmed live before the fix: `printf PWNED > .cl\aude/settings.json` was ALLOWED.
+actual="$(run_hook "$(build_bash_stdin t24 'printf PWNED > .cl\aude/settings.json')")"
+assert_deny "24 Bash backslash-escape respelling bypass" "$actual"
+
+# 25. Round-5 bypass: quote-splitting -- adjacent empty quotes concatenate at
+# shell-expansion time, so the static substring check never sees a contiguous
+# ".claude/settings.json" match -> deny. Confirmed live before the fix: `printf PWNED >
+# .clau''de/sett''ings.json` was ALLOWED.
+actual="$(run_hook "$(build_bash_stdin t25 "printf PWNED > .clau''de/sett''ings.json")")"
+assert_deny "25 Bash quote-splitting respelling bypass" "$actual"
+
 # ---- summary ------------------------------------------------------------
 
 echo "----"
