@@ -307,17 +307,43 @@ redundant once chaining itself is the gate (a single unchained `sed -i ... .clau
 fails the read-verb match and correctly denies on its own). Test suite grew to 14 cases (added: `;`-chained
 bypass, `&&`-chained bypass, newline-separated two-line command).
 
+**Background-operator bypass (round 3, live re-verification, 2026-09-14)**: round 2's metacharacter
+denylist (`CHAIN_TOKENS`) was itself still a denylist, and had the exact same structural weakness one
+level up — it enumerated `;`, `&&`, `||`, `|`, a backtick, `$(`, `>`, `<`, and an embedded newline, but
+never added the `&` background operator. `cat .claude/settings.json & echo done` sailed straight through:
+no chaining token matched, `cat` matched the read-only-verb prefix, so it was allowed even though `&`
+backgrounds the read and lets an unbounded second command run alongside it. Root cause: enumerating
+"dangerous shell operators" has the same completeness problem as enumerating "dangerous write tokens" did
+in round 2 — there is always one more operator nobody thought to add, regardless of which fixed list is
+being maintained.
+
+**Fix (round 3)**: replaced the denylist approach entirely with a positive character-class ALLOWLIST — a
+structurally different mechanism, not one more entry added to the round-2 list. A Bash command
+referencing a protected path is allowed through only when (a) every character in the leading/trailing-
+trimmed command is an ASCII letter, digit, space, or one of `- _ / . : ~`, and (b) the entire trimmed
+command is a single invocation of a recognized read-only verb. Because every shell metacharacter this
+hook cares about — `;`, `&`, `&&`, `||`, `|`, a backtick, `$(`, `>`, `<`, a quote, a tab, a backslash, an
+embedded newline — falls outside that allowed character set by construction, none of them need to be
+individually enumerated, and there is no "one more operator" left to miss. `CHAIN_TOKENS`,
+`contains_chain_operator`, and `contains_newline` were dropped entirely — the character allowlist
+subsumes all three, including the newline case that previously needed its own dedicated check. Test suite
+grew to 18 cases (added: `&`-backgrounding bypass, a literal tab character, backslash line-continuation,
+and leading/trailing whitespace around an otherwise-safe read).
+
 **Verified**: 2026-09-14, live re-test of the exact original reproduction — a direct `Edit` call against
 `claude/agents/pe-governance.md`, no prior authorization — correctly blocked, error citing `CLAUDE.md` and
-`GOVERNANCE-LOG.md`. The exact round-2 bypass reproduction
-(`git diff -- .claude/settings.json; python3 -c "print(1)"`) now correctly denies with a
-chaining-specific reason. Legitimate single reads (`cat .claude/settings.json`,
-`git log -- .claude/settings.json`) still allow; a direct single-command write
-(`sed -i ... .claude/settings.json`) still denies. Full 14/14 automated test suite passes. Commits:
-`3034161` (round-1 tests), `1b2f392` (round-1 hook), `5421826` (round-1 wiring), `fd20f25` (round-1
-governance log entry), `92e4c76` (moved to Resolved), `c88d170` (round-1 over-blocking fix — fail-closed
-+ read/write distinction), `27a5bcd` (round-1 regression tests), `b4bf56f` (untracked-citation
-correction); round-2's command-chaining fix and this update are captured in
-`claude/agents/GOVERNANCE-LOG.md`'s entry for that change.
+`GOVERNANCE-LOG.md`. Both the round-2 bypass reproduction
+(`git diff -- .claude/settings.json; python3 -c "print(1)"`) and the round-3 bypass reproduction
+(`cat .claude/settings.json & echo done`) now correctly deny. Legitimate single reads (`cat
+.claude/settings.json`, `git log -- .claude/settings.json`, `git diff -- .gateflow/config.json`) still
+allow; a direct single-command write (`sed -i ... .claude/settings.json`) still denies. Full 18/18
+automated test suite passes. Commits: `3034161` (round-1 tests), `1b2f392` (round-1 hook), `5421826`
+(round-1 wiring), `fd20f25` (round-1 governance log entry), `92e4c76` (moved to Resolved), `c88d170`
+(round-1 over-blocking fix — fail-closed + read/write distinction), `27a5bcd` (round-1 regression tests),
+`b4bf56f` (untracked-citation correction), `c728a75` (round-2 command-chaining fix), `2136f22`/`c3cf596`
+(round-2 doc updates). Round-2's command-chaining fix and this doc update touched only
+`.claude/hooks/protect-self-amendment.sh`, its test file, and this doc — none of the 5 self-amendment-
+protected files — so no `GOVERNANCE-LOG.md` entry applies to either; the same is true of round 3's
+allowlist rewrite.
 
 **Status**: resolved.
