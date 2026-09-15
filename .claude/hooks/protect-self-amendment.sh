@@ -3,31 +3,54 @@
 # modify one of the 6 self-amendment-protected files, unconditionally and independent
 # of permissions.defaultMode. Full history (why "deny" not "ask", the defaultMode:auto
 # bypass that motivated this hook, the command-chaining/background-operator bypass
-# fixes, the path-spelling/cd-relative-addressing bypass fix, and the round-5
-# dot-source/backslash/quote-splitting bypass fix below) is in BUGS.md's "self-amendment
-# `ask` gate" Resolved entry and in claude/agents/GOVERNANCE-LOG.md. permissions.ask is
-# kept as a defense-in-depth fallback alongside this hook, not replaced by it.
+# fixes, the path-spelling/cd-relative-addressing bypass fix, the round-5
+# dot-source/backslash/quote-splitting bypass fix, and the round-6 git-invocation
+# bypass fix below) is in BUGS.md's "self-amendment `ask` gate" Resolved entry and in
+# claude/agents/GOVERNANCE-LOG.md. permissions.ask is kept as a defense-in-depth
+# fallback alongside this hook, not replaced by it.
 #
 # LIMITS OF TEXT-BASED BASH SCANNING -- READ THIS BEFORE RELYING ON THE BASH PATH:
 # the Bash branch below is a static text scan, not a shell parser or interpreter.
 # Scanning shell command TEXT for danger has an inherent, irreducible completeness
 # limit: a shell has an effectively unbounded number of ways to obfuscate a string
-# before executing it -- ANSI-C quoting ($'...'), IFS-substitution tricks, brace
-# expansion, parameter-expansion substring games, a command substitution nested inside
-# otherwise-innocuous-looking text, and other techniques nobody has enumerated yet, on
-# top of the four bypass classes already found and closed below. This hook provides
-# strong protection against the bug it was originally built for (silent, unprompted
+# before executing it, and beyond the shell itself, an individual TOOL considered
+# "read-only" can still have its own config/env/plugin-driven subprocess-spawning
+# surface (round 6's discovery -- see bypass 5 below). This hook provides strong
+# protection against the bug it was originally built for (silent, unprompted
 # Edit/Write against a protected file under permissions.defaultMode:auto), and against
 # unsophisticated or accidental Bash usage, and reasonable protection against common
 # obfuscation techniques -- but it does NOT claim, and will not claim, to be airtight
 # against a sophisticated, deliberately adversarial agent using Bash specifically to
-# evade it. That residual gap is an accepted, permanent, documented limitation of
-# static text scanning as a technique, not an open bug to keep chasing -- see BUGS.md's
-# round-5 closing statement. The hard, unconditional guarantee this hook provides, with
-# no equivalent gap, is the Edit/Write/MultiEdit path: those tool calls carry a
-# structured file_path field with no shell to obfuscate through, so that path's
-# protection is not a heuristic. As of GTF-21 round 5, this is the LAST round of
-# Bash-specific bypass patching.
+# evade it. The hard, unconditional guarantee this hook provides, with no equivalent
+# gap, is the Edit/Write/MultiEdit path: those tool calls carry a structured file_path
+# field with no shell to obfuscate through, so that path's protection is not a
+# heuristic.
+#
+# REVIEW SCOPE / STOPPING POLICY (set 2026-09-15, GTF-21 round 6, explicit repo-owner
+# decision -- do not silently relitigate this in a future review round):
+#   1. One dedicated adversarial round per hook change. Whatever a `pe-bash` review
+#      finds in that round gets fixed once, in that round. A bypass class discovered
+#      LATER, in a future unrelated session, is a new BUGS.md entry / new ticket -- it
+#      does not retroactively reopen whatever ticket last touched this file.
+#   2. Verified-safe-verb checklist for READ_ONLY_VERBS (the character-allowlist fast
+#      path below): a verb is added to that list ONLY after confirming it has NO
+#      config/env/plugin-driven subprocess-spawning surface (does it read a pager
+#      variable, an external-diff/merge setting, a preprocessor hook, a plugin
+#      directory, etc). If that audit is unclear or unconfirmed for a verb, it does
+#      NOT get unconditional-allow treatment -- it goes through the ordinary fallback
+#      checks below like any other command this hook has no special opinion on. This
+#      is why `git log/diff/show/blame/status` (config-injectable via `-c`,
+#      `core.pager`, `diff.external`) and `bat`/`less`/`more` (PAGER/LESSOPEN-driven)
+#      are NOT unconditional-fast-path verbs even though they are common read
+#      commands -- see bypass 5 below for git's dedicated, stricter grammar instead.
+# This replaces any future round's temptation to declare "this is the last round" as
+# an assertion (round 5 tried that; round 6 immediately found a new bypass CLASS, not
+# just a new spelling, proving the assertion wrong within one round) with a checkable
+# criterion: did THIS round's dedicated adversarial pass get fixed? If yes, this file
+# is done for this ticket, regardless of whether a hypothetical future bypass might
+# still exist. Residual risk beyond what a dedicated round found is an accepted,
+# permanent, documented limitation of static text scanning as a technique -- not an
+# open-ended obligation to keep re-auditing this file indefinitely.
 #
 # Bash 3.2 portable (macOS ships 3.2) -- no mapfile, readarray, declare -A, or
 # ${var,,}/${var^^} case conversion. [[ =~ ]] (POSIX ERE) is used for word-boundary
@@ -42,84 +65,96 @@
 # path is not automatically denied. Read-only inspection of a protected file (e.g.
 # `cat .claude/settings.json`, `git log -- .gateflow/config.json`) is legitimate and
 # common during review/debugging, and blanket-denying it trains reflexive workarounds
-# instead of protecting anything. This hook has tried, and abandoned, three DENYLIST
-# designs in a row -- all three proved bypassable, and all three bypasses are logged in
-# BUGS.md's "self-amendment `ask` gate" Resolved entry:
+# instead of protecting anything. This hook has tried, and abandoned, four DENYLIST-
+# shaped designs in a row -- all four proved bypassable, and all four bypasses are
+# logged in BUGS.md's "self-amendment `ask` gate" Resolved entry:
 #   1. read-only verb prefix AND no write-token from a fixed denylist -- bypassed by
-#      chaining a read verb with `;`/`&&` to a write mechanism not on the list
-#      (e.g. `python3 -c "open(...,'w')"`).
+#      chaining a read verb with `;`/`&&` to a write mechanism not on the list.
 #   2. read-only verb prefix AND no shell-chaining/substitution metacharacter from a
-#      fixed denylist -- bypassed by the `&` background operator, which was never
-#      added to that list.
-#   3. (path-relevance PRE-GATE, not a command-shape denylist) the Bash branch only
-#      scrutinized a command at all when the protected path appeared as an EXACT
-#      LITERAL SUBSTRING of the raw command text -- bypassed by an alternate spelling
-#      of the same path (a doubled slash: `.claude//settings.json`; a redundant `./`
-#      segment: `.claude/./settings.json`) or by `cd`-ing into the target directory
-#      first and addressing the file by its bare name (`cd .claude && printf ... >
-#      settings.json`), neither of which ever matched the literal substring check, so
-#      the character-allowlist/read-only-verb scrutiny below never even ran.
+#      fixed denylist -- bypassed by the `&` background operator, never on that list.
+#   3. (path-relevance PRE-GATE) the Bash branch only scrutinized a command at all
+#      when the protected path appeared as an EXACT LITERAL SUBSTRING of the raw
+#      command text -- bypassed by an alternate spelling (doubled slash, redundant
+#      `./`) or by `cd`-ing into the target directory first and addressing the file by
+#      its bare name.
 #   4. (dot-source / backslash-escape / quote-splitting, round 5) even with bypass 3's
 #      fix in place, three further single, unchained commands still slipped through:
-#      `. /path/to/malicious.sh` (the POSIX dot-source alias for `source`, never
-#      matched by the cd/pushd/source word check); `printf PWNED > .cl\aude/settings.json`
-#      (a backslash respelling the shell resolves to the real path at execution time,
-#      but which breaks the literal-substring check since the hook only ever sees the
-#      pre-resolution text); and `printf PWNED > .clau''de/sett''ings.json` (adjacent
-#      empty quotes that concatenate at shell-expansion time, same literal-substring
-#      miss). Fixed by (a) extending the cd/pushd/source word check to also catch a
-#      bare `.` used as a standalone command word, and (b) denying outright, in the
-#      same fallback branch, whenever the command contains a backslash or a quote
-#      character ANYWHERE -- not an enumerated list of specific escape techniques, the
-#      same "cannot rule out obfuscated addressing by static matching, fail closed"
-#      reasoning already applied to cd/pushd/source. Backslash and quote characters
-#      were already excluded from is_safe_char_command's fast-path allowlist; this
-#      closes the gap where that exclusion didn't propagate to the fallback relevance
-#      check below it.
+#      dot-source (`.` as the POSIX alias for `source`, never matched by the word
+#      check); a backslash respelling of a protected path; adjacent empty quotes that
+#      concatenate at shell-expansion time.
+#   5. (git invocation surface, round 6) even with bypass 1-4 all closed, `git`
+#      itself -- one of the READ_ONLY_VERBS entries -- turned out to violate this
+#      hook's own core invariant ("a safe-character, read-only-verb command cannot
+#      write anywhere, period"). Verified, concrete PoCs (isolated scratch repo, never
+#      run against this repo): `git -c diff.external=<script> diff HEAD~1 HEAD`
+#      configures git to run an attacker-controlled program as its diff driver --
+#      full RCE, entirely outside this hook's (or any PreToolUse hook's) visibility,
+#      and NOT contingent on the command textually referencing a protected path at
+#      all; `git diff --output <path> ...` (space-separated form; `=`-joined already
+#      failed the character allowlist) writes the diff's own content to an arbitrary
+#      file, letting `git diff --no-index --output .claude/settings.json <a> <b>`
+#      overwrite a protected file directly; `git -C <dir> diff --output <bare-name>
+#      ...` combines both, splitting a protected path's directory from its filename
+#      across two tokens, defeating the substring check too. The lesson (see the
+#      REVIEW SCOPE / STOPPING POLICY above): "is this verb read-only" is not a stable
+#      property of the verb's NAME -- git's `-c`/`-C`/`--git-dir=`/`--output` global
+#      and per-command flag surface makes it a write-and-exec-capable tool disguised
+#      as a read one. Fixed by removing git from the unconditional character-
+#      allowlist fast path entirely and giving it its own, much stricter, positive
+#      grammar (`is_safe_git_readonly_command`): the trimmed command must start with
+#      an EXACT literal `git <verb>` (no token, flagged or not, between "git" and the
+#      verb -- this is what rules out `-c`/`-C`/`--git-dir=` etc as a class, not one
+#      enumerated flag at a time), and no token anywhere else in the command may start
+#      with `-` except the literal `--` separator (this is what rules out `--output`
+#      and any other future flag as a class). Any other `git` invocation --
+#      chained, flagged, or otherwise not matching that exact grammar -- is denied
+#      outright by `contains_unsafe_git_invocation`, independent of whether a
+#      protected path is textually present, because git's RCE surface doesn't need
+#      one: once a subprocess is running, what it does next is no longer this hook's
+#      business to detect via text matching.
 # Any enumerated "list of dangerous things" (or, per bypass 3, any single fixed
 # spelling of a protected path) is structurally incomplete -- there is always one more
-# operator, mechanism, spelling, or whitespace character nobody thought to add. The
-# fix that closed 1 and 2 was a positive character-class ALLOWLIST instead of a
-# metacharacter denylist. The fix that closes 3 applied that same "allowlist, not
-# enumerate-the-bypasses" philosophy one level up, to how relevance is even decided,
-# and the fix that closes 4 (this revision) extends it further: a bare `.` joins
-# cd/pushd/source as an address-obscuring command word, and the backslash/quote
-# characters already absent from the safe-character allowlist now also disqualify a
-# command in the fallback relevance check, not just the fast path:
+# operator, mechanism, spelling, or whitespace character nobody thought to add. Every
+# fix above replaced an enumerated denylist with a positive ALLOWLIST one level up:
+# bypasses 1-2 -> a character-class allowlist instead of a metacharacter denylist;
+# bypass 3 -> normalizing the path text instead of a single fixed spelling, and
+# deciding safety independent of path-relevance; bypass 4 -> extending what counts as
+# an address-obscuring token/character; bypass 5 -> replacing "is this verb's NAME on
+# a safe list" with "does this EXACT invocation match a verified-safe grammar",
+# per-tool, informed by that tool's own config/plugin surface (the verified-safe-verb
+# checklist in the STOPPING POLICY above).
 #   - The command text is normalized for path-matching (consecutive "/" collapsed to
 #     one, "/./ " segments collapsed to "/") before the protected-path substring check
 #     runs, so alternate spellings of the same path can't dodge the check.
-#   - Whether a command is safe is no longer conditioned on path-relevance at all: a
-#     command passing BOTH the character allowlist AND the read-only-verb check is
-#     provably a single, unchained, safe-character invocation of a whitelisted read
-#     verb -- it cannot write anywhere, period, so it is allowed unconditionally,
-#     whether or not a protected path is textually present.
-#   - Only a command that FAILS that combined check is then evaluated for relevance:
-#     denied if the normalized text references a protected path, OR if the command
-#     contains a `cd`/`pushd`/`source` token (or a bare `.` dot-source command word)
-#     anywhere -- any of those make the command's effective working directory (and
-#     therefore what a bare relative filename resolves to) impossible to determine by
-#     static substring matching -- OR if the command contains a backslash or quote
-#     character anywhere, which can respell or reconstruct a protected path in ways
-#     static substring matching cannot see through.
-# A command that fails the safe/read-only check AND has none of a protected-path
-# reference, a cd/pushd/source/dot-source token, or a backslash/quote character is none
-# of this hook's business and is allowed -- this hook's scope is the 6 protected files,
-# not general Bash vetting.
+#   - A command is allowed unconditionally, regardless of whether a protected path is
+#     textually present, ONLY if it passes the character allowlist AND (matches a
+#     verified-safe read-only verb prefix from READ_ONLY_VERBS OR matches git's
+#     dedicated safe-read-only grammar). Both conditions together prove the command
+#     cannot write anywhere and cannot invoke an attacker-controlled subprocess.
+#   - A command that fails that combined check is evaluated for relevance in a fixed
+#     order: denied if it invokes `git` outside the safe grammar (bypass 5, checked
+#     independent of path-relevance); denied if the normalized text references a
+#     protected path; denied if it contains a `cd`/`pushd`/`source` token or a bare
+#     `.` dot-source command word (cwd becomes undeterminable); denied if it contains
+#     a backslash or quote character (path can be respelled/reconstructed around the
+#     literal check). A command failing the fast path but triggering NONE of these is
+#     none of this hook's business and is allowed -- this hook's scope is the 6
+#     protected files plus git's independently-dangerous RCE surface, not general Bash
+#     vetting.
 #
-# Known, accepted over-blocking from the cd/pushd/source/dot-source rule: a read-only
-# command that happens to `cd` somewhere entirely unrelated first (e.g. `cd /tmp && ls`)
-# fails the character allowlist (due to `&&`) and is then denied by the cd-token rule
-# even though it never goes near a protected file. This is a deliberate tradeoff, not a
-# bug: making the cd-token check path-specific (e.g. only firing when a protected path
-# also appears somewhere in the command) would reintroduce exactly the kind of
-# enumerable, gameable condition this fix exists to eliminate -- cd/pushd/source/dot-
-# source defeat static analysis in general, not just for the 6 protected paths. The
-# same tradeoff applies to the backslash/quote rule: a read-only command that happens
-# to use a backslash or quote for an unrelated reason is also denied once it reaches
-# the fallback branch. Fail-closed is this hook's stated philosophy throughout; a false
-# positive on an unrelated command is an acceptable cost, a false negative on a
-# protected file is not.
+# Known, accepted over-blocking: a read-only command that happens to `cd` somewhere
+# entirely unrelated first (e.g. `cd /tmp && ls`) fails the character allowlist (due to
+# `&&`) and is then denied by the cd-token rule even though it never goes near a
+# protected file -- deliberate, not a bug (see bypass 4's fix rationale). The same
+# tradeoff now also applies to `bat`/`less`/`more`: removed from the unconditional
+# fast path per the verified-safe-verb checklist, a plain `bat .claude/settings.json`
+# or `less .claude/settings.json` now denies (caught by the protected-path substring
+# check in the fallback) where it previously allowed -- reading a protected file this
+# way now requires `cat`/`head`/`tail`/`grep`/`rg`/`wc`/`ls`/`jq` instead, all
+# confirmed to have no config/env/plugin subprocess-spawning surface. Fail-closed is
+# this hook's stated philosophy throughout; a false positive on an unrelated or
+# no-longer-fast-pathed command is an acceptable cost, a false negative on a protected
+# file is not.
 #
 # This is a substring/prefix scan, not a shell parser: it cannot see through variable
 # expansion or aliases. Fail-closed is the safety net for exactly that gap -- when in
@@ -136,16 +171,13 @@ claude/skills/_gateflow-shared/pe-agent-template.md
 "
 
 # Command prefixes (after trimming leading whitespace) recognized as read-only.
+# git's log/diff/show/blame/status verbs are handled separately by
+# is_safe_git_readonly_command below -- they are NOT in this list (see bypass 5 /
+# the STOPPING POLICY's verified-safe-verb checklist in the header comment). bat,
+# less, and more are likewise excluded (PAGER/LESSOPEN-driven subprocess-spawning
+# surface, precautionary per the same checklist).
 READ_ONLY_VERBS="
-git log
-git diff
-git show
-git blame
-git status
 cat
-bat
-less
-more
 head
 tail
 grep
@@ -258,21 +290,13 @@ is_safe_char_command() {
 normalize_command_for_matching() {
   # $1 = raw command text. Collapses any run of 2+ consecutive "/" down to a single
   # "/", and any "/./ " segment down to "/" -- repeatedly, until a fixed point, so an
-  # alternate spelling of a protected path (".claude//settings.json",
-  # ".claude/./settings.json") can't dodge the substring check below. Portable bash 3.2
-  # parameter-expansion substitution, no sed/external process. Termination is
-  # structural, not assumed: every substitution this loop performs strictly shortens
-  # the string (each "//" collapse removes one character, each "/./" collapse removes
-  # two), and the loop only continues while the string actually changed last pass -- a
-  # string bounded below by length 0 cannot shrink forever, so this always halts.
+  # alternate spelling of a protected path can't dodge the substring check below.
+  # Portable bash 3.2 parameter-expansion substitution, no sed/external process.
+  # Termination is structural: every substitution strictly shortens the string, and
+  # the loop only continues while it actually changed last pass.
   local text="$1" prev slash="/"
   while :; do
     prev="$text"
-    # NOTE: the replacement side of ${var//pat/repl} is a literal string with no
-    # escape processing -- a literal "\/" here inserts a literal backslash before
-    # the slash instead of meaning "just a slash" (verified directly; this bit
-    # exactly the round-2/round-3 "don't assume the first attempt is correct" trap).
-    # A variable holding "/" sidesteps the ambiguity entirely.
     text="${text//\/\//$slash}"
     text="${text//\/.\//$slash}"
     [ "$text" = "$prev" ] && break
@@ -282,23 +306,15 @@ normalize_command_for_matching() {
 
 contains_cd_token() {
   # $1 = raw command text. True iff "cd", "pushd", or "source" appears anywhere as a
-  # whole word (not as a substring of a longer identifier -- "cdfoo", "mypushd",
-  # "sourced" must NOT match), OR a bare "." (the POSIX dot-source alias for "source")
-  # appears anywhere as a standalone command word. The dot check requires the "." to be
-  # preceded by start-of-string/";"/"&"/"|"/whitespace AND followed by whitespace or
-  # end-of-string -- so it matches `. /path/to/x.sh` and `foo; . x.sh`, but never
-  # ".claude/settings.json" (dot immediately followed by "c", not whitespace), never
-  # ".gateflow/config.json" (same reason), never "./relative/path" (dot immediately
-  # followed by "/", not whitespace), and never a decimal number like "3.14" (dot
-  # preceded by an alnum character, not one of the boundary characters). cd/pushd/
-  # source/dot-source all make the command's effective working directory (and
-  # therefore what a bare relative filename actually resolves to) impossible to
-  # determine by static substring matching -- a bare "settings.json" after "cd .claude"
-  # reaches the same file ".claude/settings.json" without that path ever being spelled
-  # out in the command text, and `. /path/to/malicious.sh` runs a script in the current
-  # shell without "source" ever appearing. bash's =~ (POSIX ERE, available since bash
-  # 3.0) is used unquoted for the pattern itself -- required for portable matching
-  # semantics across bash 3.2 builds.
+  # whole word, OR a bare "." (the POSIX dot-source alias for "source") appears
+  # anywhere as a standalone command word (boundary: preceded by start-of-
+  # string/";"/"&"/"|"/whitespace, followed by whitespace or end-of-string -- so it
+  # never matches ".claude/settings.json", "./relative/path", or "3.14"). All of these
+  # make the command's effective working directory (and therefore what a bare relative
+  # filename resolves to) impossible to determine by static substring matching. Note:
+  # git's OWN cwd-changing flag (`-C <dir>`) is intentionally NOT handled here -- it's
+  # closed by `contains_unsafe_git_invocation` instead, since any `git` invocation
+  # outside the safe grammar is denied regardless of which flag it uses.
   local text="$1"
   [[ "$text" =~ (^|[^a-zA-Z0-9_])(cd|pushd|source)([^a-zA-Z0-9_]|$) ]] && return 0
   [[ "$text" =~ (^|[;\&\|[:space:]])\.([[:space:]]|$) ]] && return 0
@@ -307,21 +323,59 @@ contains_cd_token() {
 
 contains_disallowed_escape_char() {
   # $1 = raw command text. True iff a backslash, single quote, or double quote
-  # character appears anywhere. These characters are already excluded from
-  # is_safe_char_command's allowlist, so a command containing one always fails the
-  # fast safe-read-only path -- but that exclusion alone doesn't stop the command from
-  # then being evaluated ONLY by literal-substring/cd-token matching in the fallback
-  # branch, which a backslash respelling (".cl\aude/settings.json", which the shell
-  # resolves to the real path at execution time but which breaks the literal substring
-  # match) or split-and-concatenated quoting (".clau''de/sett''ings.json", which the
-  # shell concatenates at expansion time) can dodge. Same "cannot rule out obfuscated
-  # addressing by static matching, fail closed" reasoning already applied to
-  # cd/pushd/source/dot-source -- not an enumerated list of specific escape techniques.
+  # character appears anywhere -- these can respell or reconstruct a protected path in
+  # ways static substring matching cannot see through (see bypass 4 in the header).
   case "$1" in
     *\\*) return 0 ;;
     *"'"*) return 0 ;;
     *'"'*) return 0 ;;
   esac
+  return 1
+}
+
+is_safe_git_readonly_command() {
+  # $1 = trimmed command text. True iff this is EXACTLY a single "git <verb>
+  # [args...]" invocation, where <verb> is one of the verified-read-only verbs
+  # (log, diff, show, blame, status), <verb> is the literal token immediately
+  # after "git " with nothing else between them (this alone rules out any global
+  # flag -- -c, -C, --git-dir=, --work-tree=, --exec-path=, --namespace=, ... --
+  # as a CLASS, since none of them can appear between "git" and the verb in a
+  # matching command), and no token anywhere else in the command starts with "-"
+  # except the literal "--" separator token (this rules out --output and any
+  # other flag, before or after the verb, also as a class). This is a positive
+  # grammar, not an enumerated flag denylist -- see bypass 5 in the header comment.
+  local text="$1" verb rest word
+  case "$text" in
+    "git log"|"git log "*) verb="log" ;;
+    "git diff"|"git diff "*) verb="diff" ;;
+    "git show"|"git show "*) verb="show" ;;
+    "git blame"|"git blame "*) verb="blame" ;;
+    "git status"|"git status "*) verb="status" ;;
+    *) return 1 ;;
+  esac
+  rest="${text#git $verb}"
+  for word in $rest; do
+    case "$word" in
+      --) ;;
+      -*) return 1 ;;
+    esac
+  done
+  return 0
+}
+
+contains_unsafe_git_invocation() {
+  # $1 = raw command text. Only called once a command has already FAILED the fast
+  # combined check (is_safe_char_command + (is_read_only_command OR
+  # is_safe_git_readonly_command)). True iff "git" appears anywhere as a whole word --
+  # meaning this command invokes git in some form other than the one grammar this hook
+  # considers safe. git's `-c <key>=<value>` config-injection surface (redirecting
+  # core.pager / diff.external / textconv filters / credential.helper to an
+  # attacker-controlled program) means a git invocation's danger does NOT depend on
+  # whether it textually references one of the 6 protected paths -- unlike every other
+  # fallback check in this file, this one denies independent of path-relevance. See
+  # bypass 5 in the header comment for the concrete PoCs this closes.
+  local text="$1"
+  [[ "$text" =~ (^|[^a-zA-Z0-9_])git([^a-zA-Z0-9_]|$) ]] && return 0
   return 1
 }
 
@@ -346,11 +400,16 @@ case "$tool_name" in
 
     trimmed_command="$(trim "$command_text")"
 
-    if is_safe_char_command "$trimmed_command" && is_read_only_command "$trimmed_command"; then
-      : # character-allowlisted, single invocation of a recognized read-only verb --
-        # provably cannot write anywhere, allowed unconditionally regardless of
-        # whether a protected path is textually present (see header comment)
+    if is_safe_char_command "$trimmed_command" && { is_read_only_command "$trimmed_command" || is_safe_git_readonly_command "$trimmed_command"; }; then
+      : # character-allowlisted, single invocation of a verified-safe read-only verb
+        # (or git's own dedicated safe grammar) -- provably cannot write anywhere and
+        # cannot invoke an attacker-controlled subprocess, allowed unconditionally
+        # regardless of whether a protected path is textually present (see header)
     else
+      if contains_unsafe_git_invocation "$command_text"; then
+        deny "protect-self-amendment: command invokes git in a form other than this hook's verified-safe read-only grammar (plain 'git log/diff/show/blame/status', no flags before or after the verb except '--'), which can spawn an attacker-controlled subprocess via -c/-C/--output and other config-injection surfaces regardless of whether a protected path is textually present -- failing closed"
+      fi
+
       normalized_command="$(normalize_command_for_matching "$command_text")"
       matched_protected=""
       for protected in $PROTECTED_PATHS; do

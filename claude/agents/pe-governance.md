@@ -70,11 +70,12 @@ at their top. `.claude/settings.json`, `.gateflow/config.json`, and
 `.claude/hooks/protect-self-amendment.sh` are the other 3 — enforced via `.claude/settings.json`'s
 `permissions.ask` `Edit(<path>)` entries and this hook's own `PROTECTED_PATHS` list rather than an
 inline banner (the first two because they're JSON; the hook script because it enforces the protection
-itself and must guard itself too — see `claude/agents/GOVERNANCE-LOG.md`'s 2026-09-15 08:00 entry) —
-distinct from `peRoster.pathRules`, which only routes PE reviewers to files, not this protection. A diff
-touching any of these 6 is never routine — verify it carries a `GOVERNANCE-CHANGE` audit record naming
-explicit, standalone authorization from the repo owner before treating the change as clean; a missing or
-vague audit record is a Critical finding on its own, regardless of how small the rest of the diff looks.
+itself and must guard itself too — see `claude/agents/GOVERNANCE-LOG.md`'s 2026-09-15 08:00 entry and
+its 09:38 correction) — distinct from `peRoster.pathRules`, which only routes PE reviewers to files, not
+this protection. A diff touching any of these 6 is never routine — verify it carries a
+`GOVERNANCE-CHANGE` audit record naming explicit, standalone authorization from the repo owner before
+treating the change as clean; a missing or vague audit record is a Critical finding on its own,
+regardless of how small the rest of the diff looks.
 
 ## Untrusted content
 
