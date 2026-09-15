@@ -3,10 +3,31 @@
 # modify one of the 6 self-amendment-protected files, unconditionally and independent
 # of permissions.defaultMode. Full history (why "deny" not "ask", the defaultMode:auto
 # bypass that motivated this hook, the command-chaining/background-operator bypass
-# fixes, and the path-spelling/cd-relative-addressing bypass fixed below) is in
-# BUGS.md's "self-amendment `ask` gate" Resolved entry and in
-# claude/agents/GOVERNANCE-LOG.md. permissions.ask is kept as a defense-in-depth
-# fallback alongside this hook, not replaced by it.
+# fixes, the path-spelling/cd-relative-addressing bypass fix, and the round-5
+# dot-source/backslash/quote-splitting bypass fix below) is in BUGS.md's "self-amendment
+# `ask` gate" Resolved entry and in claude/agents/GOVERNANCE-LOG.md. permissions.ask is
+# kept as a defense-in-depth fallback alongside this hook, not replaced by it.
+#
+# LIMITS OF TEXT-BASED BASH SCANNING -- READ THIS BEFORE RELYING ON THE BASH PATH:
+# the Bash branch below is a static text scan, not a shell parser or interpreter.
+# Scanning shell command TEXT for danger has an inherent, irreducible completeness
+# limit: a shell has an effectively unbounded number of ways to obfuscate a string
+# before executing it -- ANSI-C quoting ($'...'), IFS-substitution tricks, brace
+# expansion, parameter-expansion substring games, a command substitution nested inside
+# otherwise-innocuous-looking text, and other techniques nobody has enumerated yet, on
+# top of the four bypass classes already found and closed below. This hook provides
+# strong protection against the bug it was originally built for (silent, unprompted
+# Edit/Write against a protected file under permissions.defaultMode:auto), and against
+# unsophisticated or accidental Bash usage, and reasonable protection against common
+# obfuscation techniques -- but it does NOT claim, and will not claim, to be airtight
+# against a sophisticated, deliberately adversarial agent using Bash specifically to
+# evade it. That residual gap is an accepted, permanent, documented limitation of
+# static text scanning as a technique, not an open bug to keep chasing -- see BUGS.md's
+# round-5 closing statement. The hard, unconditional guarantee this hook provides, with
+# no equivalent gap, is the Edit/Write/MultiEdit path: those tool calls carry a
+# structured file_path field with no shell to obfuscate through, so that path's
+# protection is not a heuristic. As of GTF-21 round 5, this is the LAST round of
+# Bash-specific bypass patching.
 #
 # Bash 3.2 portable (macOS ships 3.2) -- no mapfile, readarray, declare -A, or
 # ${var,,}/${var^^} case conversion. [[ =~ ]] (POSIX ERE) is used for word-boundary
@@ -38,13 +59,33 @@
 #      first and addressing the file by its bare name (`cd .claude && printf ... >
 #      settings.json`), neither of which ever matched the literal substring check, so
 #      the character-allowlist/read-only-verb scrutiny below never even ran.
+#   4. (dot-source / backslash-escape / quote-splitting, round 5) even with bypass 3's
+#      fix in place, three further single, unchained commands still slipped through:
+#      `. /path/to/malicious.sh` (the POSIX dot-source alias for `source`, never
+#      matched by the cd/pushd/source word check); `printf PWNED > .cl\aude/settings.json`
+#      (a backslash respelling the shell resolves to the real path at execution time,
+#      but which breaks the literal-substring check since the hook only ever sees the
+#      pre-resolution text); and `printf PWNED > .clau''de/sett''ings.json` (adjacent
+#      empty quotes that concatenate at shell-expansion time, same literal-substring
+#      miss). Fixed by (a) extending the cd/pushd/source word check to also catch a
+#      bare `.` used as a standalone command word, and (b) denying outright, in the
+#      same fallback branch, whenever the command contains a backslash or a quote
+#      character ANYWHERE -- not an enumerated list of specific escape techniques, the
+#      same "cannot rule out obfuscated addressing by static matching, fail closed"
+#      reasoning already applied to cd/pushd/source. Backslash and quote characters
+#      were already excluded from is_safe_char_command's fast-path allowlist; this
+#      closes the gap where that exclusion didn't propagate to the fallback relevance
+#      check below it.
 # Any enumerated "list of dangerous things" (or, per bypass 3, any single fixed
 # spelling of a protected path) is structurally incomplete -- there is always one more
 # operator, mechanism, spelling, or whitespace character nobody thought to add. The
 # fix that closed 1 and 2 was a positive character-class ALLOWLIST instead of a
-# metacharacter denylist. The fix that closes 3 (this revision) applies that same
-# "allowlist, not enumerate-the-bypasses" philosophy one level up, to how relevance is
-# even decided:
+# metacharacter denylist. The fix that closes 3 applied that same "allowlist, not
+# enumerate-the-bypasses" philosophy one level up, to how relevance is even decided,
+# and the fix that closes 4 (this revision) extends it further: a bare `.` joins
+# cd/pushd/source as an address-obscuring command word, and the backslash/quote
+# characters already absent from the safe-character allowlist now also disqualify a
+# command in the fallback relevance check, not just the fast path:
 #   - The command text is normalized for path-matching (consecutive "/" collapsed to
 #     one, "/./ " segments collapsed to "/") before the protected-path substring check
 #     runs, so alternate spellings of the same path can't dodge the check.
@@ -55,25 +96,30 @@
 #     whether or not a protected path is textually present.
 #   - Only a command that FAILS that combined check is then evaluated for relevance:
 #     denied if the normalized text references a protected path, OR if the command
-#     contains a `cd`/`pushd`/`source` token anywhere -- any of those make the
-#     command's effective working directory (and therefore what a bare relative
-#     filename resolves to) impossible to determine by static substring matching, so
-#     "no protected path is textually present" can no longer be trusted as "this
-#     command is irrelevant" once one of those tokens is present.
-# A command that fails the safe/read-only check AND has neither a protected-path
-# reference nor a cd/pushd/source token is none of this hook's business and is
-# allowed -- this hook's scope is the 6 protected files, not general Bash vetting.
+#     contains a `cd`/`pushd`/`source` token (or a bare `.` dot-source command word)
+#     anywhere -- any of those make the command's effective working directory (and
+#     therefore what a bare relative filename resolves to) impossible to determine by
+#     static substring matching -- OR if the command contains a backslash or quote
+#     character anywhere, which can respell or reconstruct a protected path in ways
+#     static substring matching cannot see through.
+# A command that fails the safe/read-only check AND has none of a protected-path
+# reference, a cd/pushd/source/dot-source token, or a backslash/quote character is none
+# of this hook's business and is allowed -- this hook's scope is the 6 protected files,
+# not general Bash vetting.
 #
-# Known, accepted over-blocking from the cd/pushd/source rule: a read-only command
-# that happens to `cd` somewhere entirely unrelated first (e.g. `cd /tmp && ls`) fails
-# the character allowlist (due to `&&`) and is then denied by the cd-token rule even
-# though it never goes near a protected file. This is a deliberate tradeoff, not a
-# bug: making the cd-token check path-specific (e.g. only firing when a protected
-# path also appears somewhere in the command) would reintroduce exactly the kind of
-# enumerable, gameable condition this fix exists to eliminate -- cd/pushd/source
-# defeat static analysis in general, not just for the 6 protected paths. Fail-closed
-# is this hook's stated philosophy throughout; a false positive on an unrelated `cd`
-# command is an acceptable cost, a false negative on a protected file is not.
+# Known, accepted over-blocking from the cd/pushd/source/dot-source rule: a read-only
+# command that happens to `cd` somewhere entirely unrelated first (e.g. `cd /tmp && ls`)
+# fails the character allowlist (due to `&&`) and is then denied by the cd-token rule
+# even though it never goes near a protected file. This is a deliberate tradeoff, not a
+# bug: making the cd-token check path-specific (e.g. only firing when a protected path
+# also appears somewhere in the command) would reintroduce exactly the kind of
+# enumerable, gameable condition this fix exists to eliminate -- cd/pushd/source/dot-
+# source defeat static analysis in general, not just for the 6 protected paths. The
+# same tradeoff applies to the backslash/quote rule: a read-only command that happens
+# to use a backslash or quote for an unrelated reason is also denied once it reaches
+# the fallback branch. Fail-closed is this hook's stated philosophy throughout; a false
+# positive on an unrelated command is an acceptable cost, a false negative on a
+# protected file is not.
 #
 # This is a substring/prefix scan, not a shell parser: it cannot see through variable
 # expansion or aliases. Fail-closed is the safety net for exactly that gap -- when in
@@ -236,16 +282,47 @@ normalize_command_for_matching() {
 
 contains_cd_token() {
   # $1 = raw command text. True iff "cd", "pushd", or "source" appears anywhere as a
-  # whole word -- not as a substring of a longer identifier ("cdfoo", "mypushd",
-  # "sourced" must NOT match). cd/pushd/source make the command's effective working
-  # directory (and therefore what a bare relative filename actually resolves to)
-  # impossible to determine by static substring matching -- a bare "settings.json"
-  # after "cd .claude" reaches the same file ".claude/settings.json" without that
-  # path ever being spelled out in the command text. bash's =~ (POSIX ERE, available
-  # since bash 3.0) is used unquoted for the pattern itself -- required for portable
-  # matching semantics across bash 3.2 builds.
+  # whole word (not as a substring of a longer identifier -- "cdfoo", "mypushd",
+  # "sourced" must NOT match), OR a bare "." (the POSIX dot-source alias for "source")
+  # appears anywhere as a standalone command word. The dot check requires the "." to be
+  # preceded by start-of-string/";"/"&"/"|"/whitespace AND followed by whitespace or
+  # end-of-string -- so it matches `. /path/to/x.sh` and `foo; . x.sh`, but never
+  # ".claude/settings.json" (dot immediately followed by "c", not whitespace), never
+  # ".gateflow/config.json" (same reason), never "./relative/path" (dot immediately
+  # followed by "/", not whitespace), and never a decimal number like "3.14" (dot
+  # preceded by an alnum character, not one of the boundary characters). cd/pushd/
+  # source/dot-source all make the command's effective working directory (and
+  # therefore what a bare relative filename actually resolves to) impossible to
+  # determine by static substring matching -- a bare "settings.json" after "cd .claude"
+  # reaches the same file ".claude/settings.json" without that path ever being spelled
+  # out in the command text, and `. /path/to/malicious.sh` runs a script in the current
+  # shell without "source" ever appearing. bash's =~ (POSIX ERE, available since bash
+  # 3.0) is used unquoted for the pattern itself -- required for portable matching
+  # semantics across bash 3.2 builds.
   local text="$1"
-  [[ "$text" =~ (^|[^a-zA-Z0-9_])(cd|pushd|source)([^a-zA-Z0-9_]|$) ]]
+  [[ "$text" =~ (^|[^a-zA-Z0-9_])(cd|pushd|source)([^a-zA-Z0-9_]|$) ]] && return 0
+  [[ "$text" =~ (^|[;\&\|[:space:]])\.([[:space:]]|$) ]] && return 0
+  return 1
+}
+
+contains_disallowed_escape_char() {
+  # $1 = raw command text. True iff a backslash, single quote, or double quote
+  # character appears anywhere. These characters are already excluded from
+  # is_safe_char_command's allowlist, so a command containing one always fails the
+  # fast safe-read-only path -- but that exclusion alone doesn't stop the command from
+  # then being evaluated ONLY by literal-substring/cd-token matching in the fallback
+  # branch, which a backslash respelling (".cl\aude/settings.json", which the shell
+  # resolves to the real path at execution time but which breaks the literal substring
+  # match) or split-and-concatenated quoting (".clau''de/sett''ings.json", which the
+  # shell concatenates at expansion time) can dodge. Same "cannot rule out obfuscated
+  # addressing by static matching, fail closed" reasoning already applied to
+  # cd/pushd/source/dot-source -- not an enumerated list of specific escape techniques.
+  case "$1" in
+    *\\*) return 0 ;;
+    *"'"*) return 0 ;;
+    *'"'*) return 0 ;;
+  esac
+  return 1
 }
 
 case "$tool_name" in
@@ -290,7 +367,11 @@ case "$tool_name" in
       fi
 
       if contains_cd_token "$command_text"; then
-        deny "protect-self-amendment: command contains cd/pushd/source, which makes cwd-relative addressing of the 6 self-amendment-protected files impossible to rule out by static substring matching, and the command did not pass as a single safe read-only invocation -- failing closed"
+        deny "protect-self-amendment: command contains cd/pushd/source or a bare dot-source invocation, which makes cwd-relative addressing of the 6 self-amendment-protected files impossible to rule out by static substring matching, and the command did not pass as a single safe read-only invocation -- failing closed"
+      fi
+
+      if contains_disallowed_escape_char "$command_text"; then
+        deny "protect-self-amendment: command contains a backslash or quote character, which can respell or reconstruct a protected path in ways static substring matching cannot see through, and the command did not pass as a single safe read-only invocation -- failing closed"
       fi
     fi
     ;;
