@@ -43,3 +43,41 @@ Round 1 findings #1–#9: all RESOLVED (verified independently by 4 agents — r
 | 6 | LOW | `.claude/hooks/protect-self-amendment.sh` STOPPING POLICY section | "One dedicated adversarial round" isn't locally defined — recoverable from context elsewhere in the same comment, but not stated where the policy itself is written. Optional. | tech-writer |
 
 Finding 1 is the same class of "alternate spelling a case-sensitive scanner can't see through" as round 4 (path-spelling) and round 5 (backslash/quote) — except here the alternate spelling (capitalization) is not obfuscation, it's a trivial, everyday variant. It also breaks the Edit/Write/MultiEdit "hard guarantee" for the first time across all 6 rounds, since that path relies on the same case-sensitive comparison.
+
+## Round 3
+
+**SHA:** 6970705 (review time — fix landed in 17586b0)
+**Verdict:** changes requested
+**Gate Status:** OPEN
+
+Round 2 finding #1 (case-insensitivity): RESOLVED (verified via re-run PoCs, all deny). This round applied the STOPPING POLICY's "one dedicated adversarial round" to the newly-narrowed `contains_unsafe_git_invocation` (never reviewed before this pass) and found 5 more gaps — 3 CRITICAL, 1 HIGH, 1 MEDIUM — the first findings in this entire history not exclusively about git or a fixed-spelling path.
+
+| # | Severity | Finding |
+|---|---|---|
+| 1 | CRITICAL | Glob/wildcard expansion (`*`, `?`, `[`) — never expanded by static text match, but is by the real shell at execution time. `printf PWNED > .claude/settings.????` wrote the real file. |
+| 2 | CRITICAL | `git --config-env=` — identical config-injection power to `-c`, reads its value from an env var instead of the command line. |
+| 3 | CRITICAL | `GIT_DIR=`/`GIT_WORK_TREE=`/`GIT_CONFIG_COUNT=`+`GIT_CONFIG_KEY_<n>=`/`GIT_CONFIG_VALUE_<n>=` env-var prefixes — same redirection/injection power, zero flag tokens in the command text. |
+| 4 | HIGH | `env -C <dir>` (and any other tool with its own cwd-redirect flag: `tar -C`, `make -C`, `rsync`) — invisible to the cd/pushd/source word check. |
+| 5 | MEDIUM | Bare parameter concatenation (`$part1$part2`) — concatenates into the real protected filename at shell-expansion time, no quote/backslash needed. |
+
+**Explicit repo-owner decision, closing round (2026-09-15, "si, dale"):** after 3 consecutive dedicated adversarial rounds (round 6, its case-insensitivity re-review, this round) each found a genuinely new bypass CLASS, Bash-bypass hunting on this ticket is formally closed — written into the hook's own header as a "CLOSED" paragraph. Any bypass found later is a new BUGS.md entry / new ticket, not a reopening of GTF-21.
+
+## Round 4 (verify-only, per the closing decision above)
+
+**SHA:** 17586b0
+**Verdict:** clean
+**Gate Status:** OPEN — 1/2 consecutive clean
+
+Round 3's 5 findings: all RESOLVED (verified in code, 48/48 tests pass against the tracked file; `pe-bash` explicitly did not hunt for a 6th bypass class, per this round's verify-only mandate). No new bypasses found — confirms the closing decision holds.
+
+Doc/traceability findings only (no code/security findings):
+
+| # | Severity | File | Finding |
+|---|---|---|---|
+| 1 | MEDIUM | `.claude/hooks/protect-self-amendment.sh` bypass-7 heading | Says "round 6's dedicated adversarial re-review" instead of "round 3's" — inconsistent with the CLOSED paragraph and BUGS.md, both of which correctly say "round 3." Leftover from copy-pasting bypass 6's heading. |
+| 2 | HIGH | `BUGS.md`, `GOVERNANCE-LOG.md` | 4th recurrence of the "commit hash to follow once applied" placeholder, now for commit `17586b0`. |
+| 3 | MEDIUM | `docs/gateflow/reviews/GTF-21-review.md` (this file) | Missing a Round 3 section despite BUGS.md/GOVERNANCE-LOG.md both citing "round 3 (of the review file)" by name — fixed by this same edit adding the section above. |
+| 4 | LOW | `BUGS.md` | Points to a "round-closing checklist" in GOVERNANCE-LOG.md that doesn't exist under that name — it's one process-note sentence inside an entry. |
+| 5 | LOW | `BUGS.md` | "Round 3" label reused for two unrelated events ~280 lines apart (an early fix-history round vs. this review file's Round 3) — ambiguous on a skim. |
+
+Process-improvement suggestion (both pe-governance and tech-writer): enforce the hash-backfill check structurally in `gateflow-review/SKILL.md` Phase 7 rather than relying on a self-diagnosed prose note that keeps getting missed. Deferred to `TODO.md` per the repo's deferred-work rule — out of scope for GTF-21 itself.
