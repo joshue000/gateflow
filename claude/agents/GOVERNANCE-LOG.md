@@ -19,7 +19,7 @@ mechanism.
 <!-- GOVERNANCE-CHANGE
 Authorized by: [name] — explicit, [reference: chat message / commit / PR]
 Date: YYYY-MM-DD HH:MM
-Files: [explicit list of affected files, or * if it affects all 5]
+Files: [explicit list of affected files, or * if it affects all 6]
 Reason: ...
 -->
 ```
@@ -135,5 +135,17 @@ Reason: Expanded self-amendment protection from 5 to 6 files, adding
         .claude/hooks/protect-self-amendment.sh itself -- the hook script enforces the protection but
         was not itself protected, the same "guard doesn't guard itself" gap already fixed once before
         for .claude/settings.json/.gateflow/config.json (see the 2026-09-14 08:55 entry above).
+-->
+
+<!-- GOVERNANCE-CHANGE
+Authorized by: Josue — explicit, confirmed in chat ("Si adelante con eso") in response to
+               gateflow-review GTF-21 round 5 findings
+Date: 2026-09-15 09:38
+Files: .claude/hooks/protect-self-amendment.sh
+Reason: The 2026-09-15 08:00 entry's Files: list omitted this file, even though it received the
+        actual protection-logic rewrite (154 lines, commit deda7ef) that entry's Reason text
+        describes. Recorded here per the append-only rule rather than editing that entry. This
+        commit's follow-up (round-5 remediation) also closes 3 further Bash bypasses (dot-source,
+        backslash-escape, quote-splitting) in the same file -- see BUGS.md for detail.
 -->
 ```
