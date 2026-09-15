@@ -288,6 +288,68 @@ assert_deny "32 Bash less on protected path now denies (verb removed from fast p
 actual="$(run_hook "$(build_bash_stdin t33 "bat README.md")")"
 assert_no_deny "33 Bash bat on unprotected path still allows" "$actual"
 
+# 34. Round-6 re-review bypass: capitalized "Git" (macOS APFS default is case-
+# insensitive-but-preserving -- "Git" resolves to the same real git binary as "git")
+# was never matched by contains_unsafe_git_invocation's lowercase-only regex.
+# Confirmed live before the fix: `Git -c diff.external=<script> diff HEAD~1 HEAD`
+# silently allowed -- the exact same RCE as case 28, reopened by one capital letter.
+actual="$(run_hook "$(build_bash_stdin t34 "Git -c diff.external=/tmp/evil.sh diff HEAD~1 HEAD")")"
+assert_deny "34 Bash capitalized Git config-injection RCE bypass" "$actual"
+
+# 35. Round-6 re-review bypass: a capitalized protected-path directory segment
+# (".CLAUDE/settings.json") resolves to the same real file on a case-insensitive
+# filesystem but was never matched by the PROTECTED_PATHS substring loop's exact
+# lowercase comparison.
+actual="$(run_hook "$(build_bash_stdin t35 "printf PWNED > .CLAUDE/settings.json")")"
+assert_deny "35 Bash capitalized protected-path bypass via Bash" "$actual"
+
+# 36. Round-6 re-review bypass, Edit/Write/MultiEdit path: a capitalized file_path
+# ("claude/agents/PE-Governance.md") resolves to the same real protected file on a
+# case-insensitive filesystem but was never matched by is_protected_path's exact
+# case-sensitive comparison -- this is the path the header calls a "hard,
+# non-heuristic guarantee," so this bypass matters more than the Bash-side ones.
+actual="$(run_hook "$(build_edit_stdin t36 Edit claude/agents/PE-Governance.md)")"
+assert_deny "36 Edit capitalized protected pe-governance.md path bypass" "$actual"
+
+# 37. Case-insensitive fix stays conservative in the ALLOW direction too: a
+# capitalized but otherwise-legitimate "Git diff -- <path>" now correctly falls
+# through to the (now case-insensitive) deny checks instead of being fast-pathed --
+# is_safe_git_readonly_command's grammar deliberately stays literal-lowercase-only.
+actual="$(run_hook "$(build_bash_stdin t37 "Git diff -- .claude/settings.json")")"
+assert_deny "37 Bash capitalized Git diff on protected path now denies (conservative)" "$actual"
+
+# 38. Regression fix: round 6's first contains_unsafe_git_invocation denied ANY git
+# subcommand outside the 5-verb read-only grammar, including ordinary `git add`/
+# `git commit` on completely unprotected files -- not this hook's business per its
+# own stated scope. The narrowed, global-flag-specific check must allow this again.
+actual="$(run_hook "$(build_bash_stdin t38 "git add BUGS.md")")"
+assert_no_deny "38 Bash git add on unprotected file now allows (regression fix)" "$actual"
+
+# 39. Same regression fix: a plain git commit with no dangerous global flag, no
+# protected path, no quotes (message from -F <path>, this repo's own established
+# commit pattern) must allow.
+actual="$(run_hook "$(build_bash_stdin t39 "git commit -F /tmp/msg.txt")")"
+assert_no_deny "39 Bash git commit -F with no protected path now allows (regression fix)" "$actual"
+
+# 40. git add on a PROTECTED path still denies -- the narrowed check doesn't widen
+# protection, only stops blanket-denying every non-grammar git subcommand.
+actual="$(run_hook "$(build_bash_stdin t40 "git add claude/agents/pe-governance.md")")"
+assert_deny "40 Bash git add on protected path still denies" "$actual" "claude/agents/pe-governance.md"
+
+# 41. --git-dir= global flag (same redirection class as -C) -> deny, independent of
+# protected-path presence, regardless of subcommand.
+actual="$(run_hook "$(build_bash_stdin t41 "git --git-dir=/tmp/evil/.git status")")"
+assert_deny "41 Bash git --git-dir= global flag denies" "$actual"
+
+# 42. --work-tree= global flag -> deny, same class as --git-dir=.
+actual="$(run_hook "$(build_bash_stdin t42 "git --work-tree=/tmp/evil status")")"
+assert_deny "42 Bash git --work-tree= global flag denies" "$actual"
+
+# 43. --exec-path= global flag -- redirects where git looks for its OWN subcommand
+# binaries, can hijack any git subcommand's implementation -> deny.
+actual="$(run_hook "$(build_bash_stdin t43 "git --exec-path=/tmp/evil status")")"
+assert_deny "43 Bash git --exec-path= global flag denies" "$actual"
+
 # ---- summary ------------------------------------------------------------
 
 echo "----"
