@@ -28,10 +28,13 @@
 #
 # REVIEW SCOPE / STOPPING POLICY (set 2026-09-15, GTF-21 round 6, explicit repo-owner
 # decision -- do not silently relitigate this in a future review round):
-#   1. One dedicated adversarial round per hook change. Whatever a `pe-bash` review
-#      finds in that round gets fixed once, in that round. A bypass class discovered
-#      LATER, in a future unrelated session, is a new BUGS.md entry / new ticket -- it
-#      does not retroactively reopen whatever ticket last touched this file.
+#   1. One dedicated adversarial round per hook change ("round" = one dedicated
+#      `pe-bash` gateflow-review pass over a change to this file, as tracked in
+#      BUGS.md's round-N findings -- not a PR, not a calendar period). Whatever a
+#      `pe-bash` review finds in that round gets fixed once, in that round. A bypass
+#      class discovered LATER, in a future unrelated session, is a new BUGS.md entry
+#      / new ticket -- it does not retroactively reopen whatever ticket last touched
+#      this file.
 #   2. Verified-safe-verb checklist for READ_ONLY_VERBS (the character-allowlist fast
 #      path below): a verb is added to that list ONLY after confirming it has NO
 #      config/env/plugin-driven subprocess-spawning surface (does it read a pager
@@ -112,6 +115,25 @@
 #      protected path is textually present, because git's RCE surface doesn't need
 #      one: once a subprocess is running, what it does next is no longer this hook's
 #      business to detect via text matching.
+#   6. (case-insensitivity, round 6 re-review) even with bypass 5's fix in place,
+#      every protected-path/git-invocation comparison in this file (`is_protected_path`,
+#      `contains_unsafe_git_invocation`, the `PROTECTED_PATHS` substring loop) was
+#      case-sensitive -- but this machine's default filesystem (macOS APFS) is
+#      case-insensitive-but-preserving. `Git -c diff.external=<script> diff HEAD~1
+#      HEAD` (capital G) resolved to the same real git binary at the OS level while
+#      failing every case-sensitive text check in this file -- reopening bypass 5's
+#      RCE with one capitalized letter. The same root cause also broke
+#      `is_protected_path`, used by the Edit/Write/MultiEdit path this header
+#      elsewhere calls a "hard, non-heuristic guarantee" -- an `Edit` with
+#      `file_path: claude/agents/PE-Governance.md` would not case-sensitively match,
+#      yet the OS resolves it to the real protected file. Fixed by lowercasing both
+#      sides of every comparison (`tr '[:upper:]' '[:lower:]'`) before matching --
+#      `PROTECTED_PATHS` entries are already all-lowercase, so only the candidate/
+#      command side needs folding. `is_safe_git_readonly_command`'s ALLOW grammar is
+#      deliberately NOT made case-insensitive -- it stays literal-lowercase-only,
+#      since only the one exact trusted spelling should ever fast-path; a capitalized
+#      `Git diff -- <path>` now correctly falls through to the (now case-insensitive)
+#      deny checks instead of being fast-pathed, which is the conservative direction.
 # Any enumerated "list of dangerous things" (or, per bypass 3, any single fixed
 # spelling of a protected path) is structurally incomplete -- there is always one more
 # operator, mechanism, spelling, or whitespace character nobody thought to add. Every
@@ -145,8 +167,15 @@
 # Known, accepted over-blocking: a read-only command that happens to `cd` somewhere
 # entirely unrelated first (e.g. `cd /tmp && ls`) fails the character allowlist (due to
 # `&&`) and is then denied by the cd-token rule even though it never goes near a
-# protected file -- deliberate, not a bug (see bypass 4's fix rationale). The same
-# tradeoff now also applies to `bat`/`less`/`more`: removed from the unconditional
+# protected file -- deliberate, not a bug (see bypass 4's fix rationale). The same,
+# path-independent over-blocking applies to ANY command containing a backslash or
+# quote character at all (see bypass 4's `contains_disallowed_escape_char`) -- a
+# perfectly ordinary quoted `grep`/`rg` pattern with no relation to a protected file
+# denies too, since this check runs regardless of protected-path relevance, same as
+# the cd-token and unsafe-git checks. This is the single most common source of
+# over-blocking in practice, more so than the two narrower cases below -- not a
+# defect, just worth knowing before reaching for a quoted pattern in this repo. The
+# same tradeoff now also applies to `bat`/`less`/`more`: removed from the unconditional
 # fast path per the verified-safe-verb checklist, a plain `bat .claude/settings.json`
 # or `less .claude/settings.json` now denies (caught by the protected-path substring
 # check in the fallback) where it previously allowed -- reading a protected file this
@@ -223,9 +252,15 @@ normalize_path() {
 }
 
 is_protected_path() {
-  local candidate="$1" protected
+  # $1 = normalized candidate path. Compared case-insensitively (lowercased against
+  # PROTECTED_PATHS, which are already all-lowercase) -- see bypass 6 in the header:
+  # this machine's default filesystem is case-insensitive-but-preserving, so
+  # "claude/agents/PE-Governance.md" resolves to the same real file as the lowercase
+  # spelling even though a case-sensitive string compare would miss it.
+  local candidate="$1" protected lower_candidate
+  lower_candidate="$(printf '%s' "$candidate" | tr '[:upper:]' '[:lower:]')"
   for protected in $PROTECTED_PATHS; do
-    [ "$candidate" = "$protected" ] && return 0
+    [ "$lower_candidate" = "$protected" ] && return 0
   done
   return 1
 }
@@ -366,18 +401,46 @@ is_safe_git_readonly_command() {
 contains_unsafe_git_invocation() {
   # $1 = raw command text. Only called once a command has already FAILED the fast
   # combined check (is_safe_char_command + (is_read_only_command OR
-  # is_safe_git_readonly_command)). True iff "git" appears anywhere as a whole word --
-  # meaning this command invokes git in some form other than the one grammar this hook
-  # considers safe. git's `-c <key>=<value>` config-injection surface (redirecting
-  # core.pager / diff.external / textconv filters / credential.helper to an
-  # attacker-controlled program) means a git invocation's danger does NOT depend on
-  # whether it textually references one of the 6 protected paths -- unlike every other
-  # fallback check in this file, this one denies independent of path-relevance. See
-  # bypass 5 in the header comment for the concrete PoCs this closes.
-  local text="$1"
-  [[ "$text" =~ (^|[^a-zA-Z0-9_])git([^a-zA-Z0-9_]|$) ]] && return 0
+  # is_safe_git_readonly_command)). True iff the command invokes git AND contains one
+  # of git's own dangerous global options -- checked independent of protected-path
+  # relevance, because these options are dangerous regardless of what else the
+  # command references:
+  #   -c <key>=<value>  (folds from -C too, post-lowercasing) -- arbitrary config
+  #     injection (diff.external, core.pager, core.editor, credential.helper,
+  #     uploadpack.packObjectsHook, ...) usable with ANY git subcommand, not just
+  #     diff/log/show.
+  #   -C <path>         -- redirects git's cwd/repo, which can point at an
+  #     attacker-controlled repo whose own .git/config achieves the same as -c.
+  #   --git-dir=/--work-tree=  -- same redirection class as -C.
+  #   --exec-path=      -- redirects where git looks for its OWN subcommand
+  #     binaries -- can hijack any git subcommand's implementation.
+  # This is git's own finite, git-project-defined set of global options with known
+  # execution-redirection semantics -- a closed, stable list documented in git(1),
+  # not an open-ended shell-obfuscation enumeration. Deliberately narrower than an
+  # earlier version of this function (round 6) that denied ANY git subcommand
+  # outside a 5-verb read-only grammar -- that blocked ordinary `git add`/`git
+  # commit`/`git push` etc. even with zero dangerous flags, which is not this
+  # hook's business (its scope is the 6 protected files plus git's
+  # independently-dangerous global-flag surface, not general git vetting -- see
+  # BUGS.md's round-6 re-review entry for the regression this replaced). A git
+  # invocation with none of these flags falls through to the SAME
+  # protected-path/cd-token/escape-char relevance checks as any other command --
+  # e.g. `git diff --output <protected-path> ...` (no -C) is still caught by the
+  # ordinary protected-path substring match below, since the target has to be
+  # named directly for this hook to care. Compared case-insensitively (see bypass
+  # 6) -- "Git -c diff.external=..." resolves to the same real git binary as
+  # "git -c ..." on this machine's case-insensitive-but-preserving default
+  # filesystem.
+  local text="$1" lower_text
+  lower_text="$(printf '%s' "$text" | tr '[:upper:]' '[:lower:]')"
+  [[ "$lower_text" =~ (^|[^a-zA-Z0-9_])git([^a-zA-Z0-9_]|$) ]] || return 1
+  [[ "$lower_text" =~ (^|[[:space:]])-c([[:space:]]|$) ]] && return 0
+  [[ "$lower_text" =~ (^|[[:space:]])--git-dir(=|[[:space:]]) ]] && return 0
+  [[ "$lower_text" =~ (^|[[:space:]])--work-tree(=|[[:space:]]) ]] && return 0
+  [[ "$lower_text" =~ (^|[[:space:]])--exec-path(=|[[:space:]]) ]] && return 0
   return 1
 }
+
 
 case "$tool_name" in
   Edit|Write|MultiEdit)
@@ -411,9 +474,12 @@ case "$tool_name" in
       fi
 
       normalized_command="$(normalize_command_for_matching "$command_text")"
+      # Compared case-insensitively (see bypass 6 in the header) -- PROTECTED_PATHS
+      # entries are already all-lowercase, so only the command side needs folding.
+      lower_normalized_command="$(printf '%s' "$normalized_command" | tr '[:upper:]' '[:lower:]')"
       matched_protected=""
       for protected in $PROTECTED_PATHS; do
-        case "$normalized_command" in
+        case "$lower_normalized_command" in
           *"$protected"*)
             matched_protected="$protected"
             break
