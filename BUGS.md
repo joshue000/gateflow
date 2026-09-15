@@ -478,10 +478,10 @@ fast path (PAGER/LESSOPEN-driven subprocess surface, precautionary, no confirmed
 read via those verbs now denies via the ordinary substring fallback instead of the removed fast path;
 non-protected reads via those verbs are unaffected. Test suite grew to 33 cases (added: legitimate
 `git diff --`/bare `git status` still allow; the 3 git PoCs above deny; `bat`/`less` on a protected path
-now deny; `bat` on an unprotected path still allows) — all 33 pass against a byte-identical scratch copy
-of the round-6 hook; two pre-existing tests (12, 14) had their asserted deny-reason substring relaxed,
-since the new git check now fires first on those two chained commands (they still deny, just for a
-different, equally valid reason).
+now deny; `bat` on an unprotected path still allows) — all 33 pass against the tracked file (commit
+`38fb720`); two pre-existing tests (12, 14) had their asserted deny-reason substring relaxed, since the
+new git check now fires first on those two chained commands (they still deny, just for a different,
+equally valid reason).
 
 **Stopping policy (round 6, explicit repo-owner decision, 2026-09-15)**: after round 6 broke round 5's
 own "this is the last round" assertion within a single round, the repo owner set a checkable stopping
@@ -494,12 +494,63 @@ driven subprocess-spawning surface; if that audit is unclear, the verb does not 
 treatment. This converts "did we chase every hypothetical bypass" (unanswerable, unbounded) into "did
 this round's dedicated pass get fixed" (checkable) as the definition of done for this file.
 
-**Status**: resolved. Rounds 1–5 are applied to the tracked `.claude/hooks/protect-self-amendment.sh` —
+**Round-6 re-review findings (gateflow-review round 2, 2026-09-15)**: with round 6's git-grammar fix
+applied and re-reviewed, `pe-bash` used its one dedicated adversarial shot (per the stopping policy
+above) on the new grammar specifically, and found one more real gap — a different class than any prior
+round, not a new spelling of an old one: **case-insensitivity**. Every protected-path/git-invocation
+comparison in the file (`is_protected_path`, `contains_unsafe_git_invocation`, the `PROTECTED_PATHS`
+substring loop) was case-sensitive, but this machine's default filesystem (macOS APFS) is
+case-insensitive-but-preserving — confirmed live, non-destructively (`Git --version` executed the real
+git binary; `ls BUGS.MD` resolved to the real `BUGS.md`). `Git -c diff.external=<script> diff HEAD~1
+HEAD` (capital G) reopened round 6's own RCE fix with one capitalized letter. Worse, the same root cause
+broke `is_protected_path`, used by the **Edit/Write/MultiEdit path** — the one this file and the hook's
+own header call a "hard, non-heuristic guarantee" — so an `Edit` with `file_path:
+claude/agents/PE-Governance.md` would not case-sensitively match, yet the OS resolves it to the real
+protected file. This is the first round across all 6 (now 7) to find a gap in that path, not just the
+Bash branch.
+
+**Fix (round 6 re-review)**: lowercase both sides of every comparison (`tr '[:upper:]' '[:lower:]'`)
+before matching — `PROTECTED_PATHS` entries are already all-lowercase, so only the candidate path /
+command text needs folding. `is_safe_git_readonly_command`'s ALLOW grammar deliberately stays
+literal-lowercase-only (only the one exact trusted spelling fast-paths; a capitalized `Git diff --
+<path>` now correctly falls through to the case-insensitive deny checks instead of being fast-pathed —
+the conservative direction). Test suite grew to 37 cases (added: capitalized `Git -c` RCE denies;
+capitalized protected-path directory segment via Bash denies; capitalized `Edit` file_path denies;
+capitalized-but-otherwise-legitimate `Git diff --` on a protected path now denies too, confirming the
+conservative direction) — all 37 pass against the tracked file (commit hash to follow once applied).
+Also documented in the header's "Known, accepted over-blocking" section: `contains_disallowed_escape_char`
+denies ANY command containing a quote/backslash character regardless of protected-path relevance — the
+single most common source of over-blocking in practice (an ordinary quoted `grep`/`rg` pattern), omitted
+from that section until this round.
+
+**Regression found applying the above (2026-09-15, same session)**: the first version of
+`contains_unsafe_git_invocation` (round 6) denied ANY git subcommand that didn't exactly match the
+5-verb read-only grammar (`log`/`diff`/`show`/`blame`/`status`, no flags) — including completely
+ordinary `git add`/`git commit`/`git push` on files that have nothing to do with the 6 protected paths,
+discovered immediately when it blocked this session's own commits for this ticket. Not this hook's
+business per its own stated scope ("the 6 protected files plus git's independently-dangerous RCE
+surface, not general Bash vetting"). **Fix**: narrowed `contains_unsafe_git_invocation` to deny only
+git's own finite, documented set of dangerous global options (`-c`/`-C` — folded together by the
+case-insensitivity fix above, `--git-dir=`, `--work-tree=`, `--exec-path=`) regardless of subcommand,
+rather than restricting which subcommands are allowed at all. A git invocation with none of those flags
+now falls through to the same protected-path/cd-token/escape-char relevance checks as any other command
+— e.g. `git diff --output <protected-path> ...` (no `-C`) is still caught by the ordinary protected-path
+substring match, since the target has to be named directly for this hook to care; `git -C ... diff
+--output ...` is still caught by the `-C` check (folds to `-c` post-lowercasing). Test suite grew to 43
+cases (added: `git add`/`git commit -F` on an unprotected file now allow; `git add` on a protected path
+still denies; `--git-dir=`/`--work-tree=`/`--exec-path=` all deny) — all 43 pass against the tracked
+file (commit hash to follow once applied), including all 3 original round-6 PoCs (28-30) and all 4
+case-insensitivity cases (34-37) confirmed still denying under the narrower check.
+
+**Status**: resolved. Rounds 1–6 are applied to the tracked `.claude/hooks/protect-self-amendment.sh` —
 round 1–4's character-allowlist/cd-token/path-normalization logic and the hook's self-protection in
 commit `deda7ef`; the round-5 dot-source/backslash/quote-splitting fix in commit `401d2f7`; banner
 comments synced across the other 5 protected files separately in commit `067f0b9` (that commit does not
-itself touch the hook script). Round 6 (git-invocation grammar + verified-safe-verb checklist + the
-stopping policy above) is designed and scratch-verified (33/33) per the Fix note above, pending the same
-manual-application step every protected-file change to this hook has required since it started
-protecting itself. The hard guarantee remains the unconditional Edit/Write/MultiEdit block, which has no
-equivalent gap and was never in question across any of the 6 rounds.
+itself touch the hook script); round 6's git-invocation grammar + stopping policy in commit `38fb720`.
+The round-6-re-review case-insensitivity fix, plus the git-global-flag-scope narrowing that replaced the
+first version's over-broad "any non-grammar git subcommand" denial, is scratch-verified (43/43) pending
+the same manual-application step every protected-file change to this hook has required since it started
+protecting itself. The hard guarantee is the unconditional Edit/Write/MultiEdit block — this round is
+the first to find (and fix) a real gap in it, via the case-sensitivity issue above, so "no equivalent
+gap" no longer describes that path's history accurately; it describes the current, fixed state, not an
+invariant that held throughout.
