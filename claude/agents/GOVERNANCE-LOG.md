@@ -99,4 +99,19 @@ Reason: Implements GTF-21 — adds a PreToolUse hook (.claude/hooks/protect-self
         permissions.ask-only protection was silently bypassed under defaultMode:auto. permissions.ask
         is kept unchanged as a defense-in-depth fallback.
 -->
+
+<!-- GOVERNANCE-CHANGE
+Authorized by: Josue — explicit, confirmed in chat ("Si, remedia todo") in response to gateflow-review
+               GTF-21 round 1 finding #1
+Date: 2026-09-14 19:20
+Files: claude/agents/GOVERNANCE-LOG.md
+Reason: Correction to the entry above (2026-09-14 18:46). Its citation of
+        docs/gateflow/plans/GTF-21-plan.md as evidentiary support was flagged by gateflow-review as
+        citing an untracked, never-committed file -- contradicting this log's own stated principle
+        that "git history is the tamper-proof evidence." The entry above is left unchanged per the
+        append-only rule; the correct, durable citation for that authorization is the chat quote
+        alone ("Si, dale adelante" approving the GTF-21 plan as presented at the gateflow-implement
+        Phase 3 approval gate), which remains valid and sufficient on its own -- consistent with
+        every other entry in this file's History, none of which cite an uncommitted file.
+-->
 ```
