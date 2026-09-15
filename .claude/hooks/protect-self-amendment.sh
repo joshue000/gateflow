@@ -145,7 +145,7 @@
 #      `Git diff -- <path>` now correctly falls through to the (now case-insensitive)
 #      deny checks instead of being fast-pathed, which is the conservative direction.
 #   7. (glob expansion / git --config-env= / GIT_* env vars / env -C / parameter
-#      concatenation, round 6's dedicated adversarial re-review) the FIRST dedicated
+#      concatenation, round 3's dedicated adversarial re-review) the FIRST dedicated
 #      adversarial pass on bypass 5's narrowed contains_unsafe_git_invocation found 5
 #      more gaps, three of which are NOT git-specific at all -- the first findings in
 #      this file's entire history that weren't about git or a fixed path spelling:
