@@ -97,3 +97,19 @@ Round 4 findings 1-3: all RESOLVED (bypass-7 heading now says "round 3's"; `1758
 | 3 | LOW | `BUGS.md` "Round-4 findings" heading | Label collision with this review file's own "Round 4" (a different event) — same ambiguity class already caught and fixed for "Round 3" in BUGS.md, left unaddressed for "Round 4." |
 
 Findings fixed directly (non-protected files) plus a new GOVERNANCE-LOG.md entry for `def8ea3` — see commits `a2ef167`, `cbb8c3a`.
+
+## Round 6
+
+**SHA:** 2c0fe64
+**Verdict:** changes requested
+**Gate Status:** OPEN
+
+Round 5 findings 1-3: all RESOLVED. `.claude/hooks/*` files confirmed byte-identical since round 5 (no drift), 48/48 tests unaffected — no new bypass hunting performed, closing decision holds.
+
+| # | Severity | File | Finding |
+|---|---|---|---|
+| 1 | HIGH | `BUGS.md` round-5 "Fix" paragraph | Stale "application pending — same pattern as round 4" language survived unfixed since `401d2f7` landed, despite round 2 certifying round-1 finding #4 (which explicitly named this same paragraph) as RESOLVED — the Status paragraph was fixed at the time, this sibling paragraph was not. Oldest surviving staleness bug in the whole document. |
+| 2 | MEDIUM | `claude/agents/GOVERNANCE-LOG.md` | No entry explicitly cites commit `067f0b9` by hash — the 08:00 entry's `Files:` list happens to cover it by coincidence (union with `deda7ef`'s files) but its Reason text never names it. |
+| 3 | LOW | `BUGS.md` "Round-5 findings" heading | Same label-collision class as Round 3/Round 4, left unaddressed for Round 5. |
+
+Findings fixed directly (non-protected files) plus a new GOVERNANCE-LOG.md entry for `067f0b9`.
