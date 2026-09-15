@@ -2,11 +2,11 @@
 
 Log of changes applied to the self-amendment-protected files:
 `claude/agents/pe-governance.md`, `claude/skills/gateflow-review/SKILL.md`,
-`claude/skills/_gateflow-shared/pe-agent-template.md`, `.claude/settings.json`, and
-`.gateflow/config.json`.
+`claude/skills/_gateflow-shared/pe-agent-template.md`, `.claude/settings.json`,
+`.gateflow/config.json`, and `.claude/hooks/protect-self-amendment.sh`.
 
 Corrections to this log's own prior entries (never edits — see the rule below) also use
-this format for consistency, even though this file isn't itself one of the 5 protected
+this format for consistency, even though this file isn't itself one of the 6 protected
 files above.
 
 **Entries are append-only — a past entry is never edited or deleted.** Git history
@@ -123,5 +123,17 @@ Files: claude/agents/GOVERNANCE-LOG.md
 Reason: Cosmetic correction. The 2026-09-14 19:20 entry above used plain double-hyphens instead of
         this file's consistent em-dash style in two places. Per the append-only rule, that entry is
         left unchanged; noting the drift here so it isn't repeated in future entries.
+-->
+
+<!-- GOVERNANCE-CHANGE
+Authorized by: Josue — explicit, confirmed in chat ("Si, arreglamos los dos") in response to
+               gateflow-review GTF-21 round 4 finding #2
+Date: 2026-09-15 08:00
+Files: .claude/settings.json, claude/agents/pe-governance.md, claude/skills/gateflow-review/SKILL.md,
+       claude/skills/_gateflow-shared/pe-agent-template.md
+Reason: Expanded self-amendment protection from 5 to 6 files, adding
+        .claude/hooks/protect-self-amendment.sh itself -- the hook script enforces the protection but
+        was not itself protected, the same "guard doesn't guard itself" gap already fixed once before
+        for .claude/settings.json/.gateflow/config.json (see the 2026-09-14 08:55 entry above).
 -->
 ```
