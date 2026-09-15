@@ -542,7 +542,9 @@ still denies; `--git-dir=`/`--work-tree=`/`--exec-path=` all deny) — all 43 pa
 file (commit `6970705`), including all 3 original round-6 PoCs (28-30) and all 4 case-insensitivity
 cases (34-37) confirmed still denying under the narrower check.
 
-**Round-3 re-review findings (gateflow-review, 2026-09-15)**: the STOPPING POLICY's "one dedicated
+**Round-3-of-the-review-file re-review findings (gateflow-review, 2026-09-15 — distinct from the "round
+3" fix-history label above at "Background-operator bypass"; this one tracks
+`docs/gateflow/reviews/GTF-21-review.md`'s own Round 3)**: the STOPPING POLICY's "one dedicated
 adversarial round" was applied to the narrowed `contains_unsafe_git_invocation` (never reviewed before
 this pass), and `pe-bash` found 5 more gaps — 3 CRITICAL, 1 HIGH, 1 MEDIUM — 3 of which are NOT
 git-specific at all, the first time a finding in this whole history wasn't about git or a fixed-spelling
@@ -580,9 +582,10 @@ documented class above, not a claim of completeness against a sufficiently deter
 residual gap is now, finally, treated as the accepted, permanent, documented limitation it always was.
 
 **Status**: resolved. Rounds 1–6, the round-6 re-review (case-insensitivity + git-scope narrowing), and
-this round-3 re-review (glob/config-env/GIT_*-env-var/env–C/param-concat) are all applied to the tracked
-`.claude/hooks/protect-self-amendment.sh` — `deda7ef`, `401d2f7`, `067f0b9` (banners only), `38fb720`,
-`6970705`, and this round's commit (hash to follow once applied — see the note in GOVERNANCE-LOG.md's
-round-closing checklist below about verifying this line gets updated). The hard guarantee is the
-unconditional Edit/Write/MultiEdit block, still the only path with no equivalent gap found across 7
-rounds of dedicated adversarial review.
+this round-3-of-the-review-file re-review (glob/config-env/GIT_*-env-var/env–C/param-concat) are all
+applied to the tracked `.claude/hooks/protect-self-amendment.sh` — `deda7ef`, `401d2f7`, `067f0b9`
+(banners only), `38fb720`, `6970705`, and `17586b0` (this round's fix, "close glob/env-var/param-concat
+bypasses, close hunting"). A verify-only round-4 re-review (docs/gateflow/reviews/GTF-21-review.md's
+Round 4) confirmed all 5 findings resolved, 48/48 tests passing, and found no new bypass class — the
+closing decision above holds. The hard guarantee is the unconditional Edit/Write/MultiEdit block, still
+the only path with no equivalent gap found across 7 rounds of dedicated adversarial review.
