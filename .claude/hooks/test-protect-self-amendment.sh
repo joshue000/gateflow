@@ -132,7 +132,7 @@ assert_deny "6 MultiEdit protected pe-agent-template.md" "$actual"
 actual="$(run_hook 'not valid json {{{')"
 assert_deny "7 malformed stdin fails closed" "$actual" "parse"
 
-# 8. Edit on an agent file NOT in the 5-file allowlist -> no deny (exact allowlist, not */agents/*.md)
+# 8. Edit on an agent file NOT in the protected allowlist -> no deny (exact allowlist, not */agents/*.md)
 actual="$(run_hook "$(build_edit_stdin t8 Edit claude/agents/pe-general.md)")"
 assert_no_deny "8 Edit non-protected agent file pe-general.md" "$actual"
 
@@ -188,6 +188,34 @@ assert_deny "17 Bash backslash line-continuation" "$actual" ".claude/settings.js
 # that trimming itself introduces a bypass.
 actual="$(run_hook "$(build_bash_stdin t18 "   cat .claude/settings.json   ")")"
 assert_no_deny "18 Bash leading/trailing whitespace around safe read still allows" "$actual"
+
+# 19. Round-4 bypass: a doubled slash inside the protected path spelling
+# (".claude//settings.json") used to dodge the old exact-literal-substring pre-gate
+# entirely -- deny. Confirmed live before the fix: `sed -i '' 's/x/y/'
+# .claude//settings.json` was ALLOWED.
+actual="$(run_hook "$(build_bash_stdin t19 "sed -i '' 's/x/y/' .claude//settings.json")")"
+assert_deny "19 Bash double-slash path-spelling bypass" "$actual" ".claude/settings.json"
+
+# 20. Round-4 bypass: a redundant "/./ " segment inside the protected path spelling
+# (".claude/./settings.json") -- same pre-gate dodge as #19, different spelling -> deny.
+actual="$(run_hook "$(build_bash_stdin t20 "sed -i '' 's/x/y/' .claude/./settings.json")")"
+assert_deny "20 Bash embedded ./ path-spelling bypass" "$actual" ".claude/settings.json"
+
+# 21. Round-4 bypass: cd into the protected directory, then address the file by its
+# bare name -- the bare filename alone never matches any PROTECTED_PATHS entry, so the
+# old logic never scrutinized this command at all -> deny (via the cd/pushd/source
+# rule, not a path match).
+actual="$(run_hook "$(build_bash_stdin t21 "cd .claude && printf PWNED > settings.json")")"
+assert_deny "21 Bash cd-then-write bare filename bypass" "$actual"
+
+# 22. Documented tradeoff: a read-only command that cd's somewhere entirely unrelated
+# first (no protected path anywhere in the command) still denies, because it fails the
+# character allowlist (due to "&&") and the cd/pushd/source rule cannot be made
+# path-specific without reintroducing the same enumerable fragility the round-4 fix
+# eliminates. This is intentional, accepted over-blocking -- see
+# protect-self-amendment.sh's header comment -- not a bug to fix.
+actual="$(run_hook "$(build_bash_stdin t22 "cd /tmp && ls")")"
+assert_deny "22 Bash cd-then-unrelated-read denies (accepted tradeoff)" "$actual"
 
 # ---- summary ------------------------------------------------------------
 
