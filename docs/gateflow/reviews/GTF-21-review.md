@@ -65,8 +65,8 @@ Round 2 finding #1 (case-insensitivity): RESOLVED (verified via re-run PoCs, all
 ## Round 4 (verify-only, per the closing decision above)
 
 **SHA:** 17586b0
-**Verdict:** clean
-**Gate Status:** OPEN — 1/2 consecutive clean
+**Verdict:** changes requested (corrected — labeled "clean" at the time, but the 3 findings below are in-scope per the gate model; verdict fixed here rather than silently, this file isn't append-only but accuracy matters)
+**Gate Status:** OPEN
 
 Round 3's 5 findings: all RESOLVED (verified in code, 48/48 tests pass against the tracked file; `pe-bash` explicitly did not hunt for a 6th bypass class, per this round's verify-only mandate). No new bypasses found — confirms the closing decision holds.
 
@@ -81,3 +81,19 @@ Doc/traceability findings only (no code/security findings):
 | 5 | LOW | `BUGS.md` | "Round 3" label reused for two unrelated events ~280 lines apart (an early fix-history round vs. this review file's Round 3) — ambiguous on a skim. |
 
 Process-improvement suggestion (both pe-governance and tech-writer): enforce the hash-backfill check structurally in `gateflow-review/SKILL.md` Phase 7 rather than relying on a self-diagnosed prose note that keeps getting missed. Deferred to `TODO.md` per the repo's deferred-work rule — out of scope for GTF-21 itself.
+
+## Round 5
+
+**SHA:** def8ea3
+**Verdict:** changes requested
+**Gate Status:** OPEN
+
+Round 4 findings 1-3: all RESOLVED (bypass-7 heading now says "round 3's"; `17586b0` backfilled in both BUGS.md and GOVERNANCE-LOG.md; Round 3 section added to this file). `pe-bash` confirmed the diff since round 4 is exactly the one-word comment fix it claims to be, 48/48 tests unaffected, no new bypass hunting performed (per this round's verify-only mandate) — the closing decision continues to hold.
+
+| # | Severity | File | Finding |
+|---|---|---|---|
+| 1 | LOW | `claude/agents/GOVERNANCE-LOG.md` | Commit `def8ea3` (the round-4 comment-only fix to the protected hook script) had no corresponding `GOVERNANCE-CHANGE` entry at all — not even a placeholder. Precedent already exists for logging comment-only protected-file edits (the 2026-09-14 14:08 entry). Raised independently by pe-governance (LOW) and tech-writer (labeled CRITICAL by tech-writer's own severity scale, but the change itself was zero-risk and already-authorized in chat — same "citation gap, not unauthorized action" reasoning applied to every prior occurrence of this pattern). |
+| 2 | MEDIUM | `BUGS.md` round-3-re-review "Fix" paragraph | Said tests pass "against a byte-identical scratch copy" — stale, they pass against the tracked file (commit `17586b0`). Same defect shape as round-1 finding #4 / round-2 finding #3-4, recurred again. |
+| 3 | LOW | `BUGS.md` "Round-4 findings" heading | Label collision with this review file's own "Round 4" (a different event) — same ambiguity class already caught and fixed for "Round 3" in BUGS.md, left unaddressed for "Round 4." |
+
+Findings fixed directly (non-protected files) plus a new GOVERNANCE-LOG.md entry for `def8ea3` — see commits `a2ef167`, `cbb8c3a`.
