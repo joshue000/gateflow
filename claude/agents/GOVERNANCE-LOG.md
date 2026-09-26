@@ -48,6 +48,21 @@ Reason: Backfilled for completeness. This commit added a peRoster.pathRules entr
 -->
 
 <!-- GOVERNANCE-CHANGE
+Authorized by: Josue — explicit, confirmed in chat (live gateflow-review TDD implementation of GTF-21's
+               self-amendment hook)
+Date: 2026-09-14 (see commits 1b2f392, c88d170, c728a75, 058ca10)
+Files: .claude/hooks/protect-self-amendment.sh
+Reason: Backfilled for completeness, same pattern as the c9c4b65 entry above. These 4 commits
+        (initial PreToolUse-hook implementation; fail-closed-on-malformed-input fix; command-chaining
+        bypass fix; chain-token-denylist-to-character-allowlist rewrite) all predate commit `deda7ef`
+        (2026-09-15 09:24), the commit that first added this file to its own PROTECTED_PATHS list — so
+        none of them is a gate bypass, just ordinary TDD iteration on the hook before it protected
+        itself. Logged here retroactively, found by gateflow-review round 8 (of the review file), so
+        the citation trail is complete rather than merely "complete for every commit after protection
+        began."
+-->
+
+<!-- GOVERNANCE-CHANGE
 Authorized by: Josue -- explicit, confirmed in chat ("remediar todo, BUGS.md debe poder rastrear o contener bugs de distintos proyectos")
 Date: 2026-09-14 08:55
 Files: *
