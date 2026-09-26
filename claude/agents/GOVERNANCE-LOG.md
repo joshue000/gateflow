@@ -101,6 +101,19 @@ Reason: Implements GTF-21 — adds a PreToolUse hook (.claude/hooks/protect-self
 -->
 
 <!-- GOVERNANCE-CHANGE
+Authorized by: Josue — explicit, confirmed in chat ("Si, dale adelante") — same authorization as the
+               entry above, which this backfills
+Date: 2026-09-14 (see commit 5421826)
+Files: .claude/settings.json
+Reason: Correction/backfill. The entry above authorizes this exact change ("adds a PreToolUse hook...")
+        but never cites the commit that applied it — that commit is 5421826 ("feat: GTF-21 wire
+        protection hook into settings.json"). Recorded here per the append-only rule (the entry above
+        is left unchanged), found by gateflow-review round 7 (of the review file) as the one gap in an
+        otherwise-complete hash-citation trail across every protected-file-touching commit on this
+        branch.
+-->
+
+<!-- GOVERNANCE-CHANGE
 Authorized by: Josue — explicit, confirmed in chat ("Si, remedia todo") in response to gateflow-review
                GTF-21 round 1 finding #1
 Date: 2026-09-14 19:20
