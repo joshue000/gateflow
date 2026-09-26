@@ -455,7 +455,10 @@ follow-up: `tierClassifier` needs either real thresholds in `.gateflow/config.js
 documented default in `tier-classifier.md` for when it's absent, and review-file loss on a git
 collision is a durability gap the review process doesn't currently guard against.
 
-**Round-6 findings (gateflow-review, 2026-09-15)**: `pe-bash` found a bypass class one level deeper than
+**Round-6 findings (gateflow-review, 2026-09-15 — fix-history label; distinct from
+`docs/gateflow/reviews/GTF-21-review.md`'s own Round 6, a later doc-staleness/GOVERNANCE-LOG-citation
+pass at SHA `2c0fe64` — this fix-history round's content actually maps to that review file's Round 1,
+SHA `401d2f7`)**: `pe-bash` found a bypass class one level deeper than
 rounds 1–5: `git` itself, one of `READ_ONLY_VERBS`' entries, violated the hook's own core invariant
 ("a safe-character, read-only-verb command cannot write anywhere, period"). Three concrete PoCs, all
 verified in an isolated scratch repo, never run against this repo: (a) **`git -c` config-injection
@@ -588,8 +591,9 @@ residual gap is now, finally, treated as the accepted, permanent, documented lim
 **Status**: resolved. Rounds 1–6, the round-6 re-review (case-insensitivity + git-scope narrowing), and
 this round-3-of-the-review-file re-review (glob/config-env/GIT_*-env-var/env–C/param-concat) are all
 applied to the tracked `.claude/hooks/protect-self-amendment.sh` — `deda7ef`, `401d2f7`, `067f0b9`
-(banners only), `38fb720`, `6970705`, and `17586b0` (this round's fix, "close glob/env-var/param-concat
-bypasses, close hunting"). A verify-only round-4 re-review (docs/gateflow/reviews/GTF-21-review.md's
-Round 4) confirmed all 5 findings resolved, 48/48 tests passing, and found no new bypass class — the
+(banners only), `38fb720`, `6970705`, `17586b0` ("close glob/env-var/param-concat bypasses, close
+hunting"), and `def8ea3` (comment-only bypass-7 heading correction). A verify-only round-4 re-review
+(docs/gateflow/reviews/GTF-21-review.md's Round 4) confirmed all 5 findings resolved, 48/48 tests
+passing, and found no new bypass class — the
 closing decision above holds. The hard guarantee is the unconditional Edit/Write/MultiEdit block, still
 the only path with no equivalent gap found across 7 rounds of dedicated adversarial review.
