@@ -129,3 +129,17 @@ Round 6 findings 1-3: all RESOLVED (round-5 Fix paragraph past-tensed with commi
 | 3 | LOW | `BUGS.md` "Round-6 findings" heading | Same label-collision class as Rounds 3/4/5, left unaddressed for Round 6 — and this one also maps to the review file's own Round 1, not Round 6, making the collision worse than the others. |
 
 Findings fixed directly — see commits following this entry.
+
+## Round 8
+
+**SHA:** 0cf824a
+**Verdict:** changes requested
+**Gate Status:** OPEN
+
+Round 7 findings 1-3: all RESOLVED. `.claude/hooks/*` confirmed byte-identical since round 5, 48/48 unaffected.
+
+| # | Severity | File | Finding |
+|---|---|---|---|
+| 1 | LOW/MEDIUM | `claude/agents/GOVERNANCE-LOG.md` | 4 pre-protection commits to `.claude/hooks/protect-self-amendment.sh` (`1b2f392`, `c88d170`, `c728a75`, `058ca10`, all before `deda7ef` added the file to its own PROTECTED_PATHS) were never backfilled for completeness, unlike the parallel `.gateflow/config.json`/`c9c4b65` precedent already in the log. Not a violation (predates protection), but an inconsistency in an otherwise-exhaustive citation trail. |
+
+Fixed directly with a new GOVERNANCE-LOG.md entry mirroring the c9c4b65 precedent.
