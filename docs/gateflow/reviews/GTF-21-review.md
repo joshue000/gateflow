@@ -113,3 +113,19 @@ Round 5 findings 1-3: all RESOLVED. `.claude/hooks/*` files confirmed byte-ident
 | 3 | LOW | `BUGS.md` "Round-5 findings" heading | Same label-collision class as Round 3/Round 4, left unaddressed for Round 5. |
 
 Findings fixed directly (non-protected files) plus a new GOVERNANCE-LOG.md entry for `067f0b9`.
+
+## Round 7
+
+**SHA:** a971fb3
+**Verdict:** changes requested
+**Gate Status:** OPEN
+
+Round 6 findings 1-3: all RESOLVED (round-5 Fix paragraph past-tensed with commit hash; `067f0b9` backfilled; Round-5 label disambiguated). `.claude/hooks/*` confirmed byte-identical since round 5, 48/48 unaffected — closing decision holds.
+
+| # | Severity | File | Finding |
+|---|---|---|---|
+| 1 | LOW | `BUGS.md` Status paragraph | Commit list omitted `def8ea3` (comment-only fix) — the one commit missing from an otherwise-complete list. |
+| 2 | LOW/MEDIUM | `claude/agents/GOVERNANCE-LOG.md` | Commit `5421826` (wiring the hook into `.claude/settings.json`, 2026-09-14) was conceptually covered by the 18:46 entry but never cited by hash — the one gap in an otherwise-exhaustive hash-citation sweep across all 39 commits on this branch. |
+| 3 | LOW | `BUGS.md` "Round-6 findings" heading | Same label-collision class as Rounds 3/4/5, left unaddressed for Round 6 — and this one also maps to the review file's own Round 1, not Round 6, making the collision worse than the others. |
+
+Findings fixed directly — see commits following this entry.
