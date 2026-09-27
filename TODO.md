@@ -72,6 +72,22 @@ override with its reason in `docs/gateflow/reviews/*.md`. If overrides start con
 generated PE's findings specifically — a real, free-to-observe pattern in data already being captured,
 no new instrumentation needed — that's the signal its judgment isn't well-calibrated for that stack.
 
+## gateflow-ship's SHA-match check can't survive its own review-file bookkeeping commit
+
+`gateflow-ship`'s Phase 1 requires `latest.sha == current HEAD` in the review file's last round. But
+recording that round (or logging a Gate 1 override) is itself a commit — the moment you commit the
+round/override entry, HEAD moves past the SHA the entry names, permanently. There's no way to make a
+commit's own content correctly cite its own future hash. Hit live on GTF-21: the override-logging commit
+(`6c20bf3`) immediately invalidated its own round's `SHA: 579e473` field relative to true HEAD.
+
+**Idea**: `gateflow-ship` Phase 1 should treat commits touching only `docs/gateflow/reviews/**` (the
+review file itself) as not invalidating the SHA match — i.e., diff `HEAD` against `latest.sha` and check
+whether every file in that diff is the review file itself, not a strict hash equality.
+
+**Why not now**: out of GTF-21's scope, and `gateflow-ship/SKILL.md` is an ordinary review-gated file
+(not self-amendment-protected, per `CLAUDE.md`'s own split), so this doesn't need governance-log
+authorization the way the hook's changes did — just its own small ticket, not a drive-by fix here.
+
 ## Enforce the round-closing hash-backfill check in gateflow-review
 
 GTF-21's dogfooding run surfaced a recurring pattern (4 occurrences across one ticket): a
