@@ -74,6 +74,22 @@ Reason: Round 1 of the first real gateflow-review run surfaced 9 findings, remed
 -->
 
 <!-- GOVERNANCE-CHANGE
+Authorized by: Josue — explicit, confirmed in chat ("remediar todo, BUGS.md debe poder rastrear o
+               contener bugs de distintos proyectos") — same authorization as the entry above, which
+               this backfills
+Date: 2026-09-14 (see commit f0295a1)
+Files: .claude/settings.json, .gateflow/config.json, claude/agents/GOVERNANCE-LOG.md,
+       claude/agents/pe-governance.md, claude/skills/_gateflow-shared/pe-agent-template.md,
+       claude/skills/gateflow-review/SKILL.md
+Reason: Correction/backfill. The entry above describes this change ("expanded self-amendment
+        protection from 3 to 5 files... fixed pe-governance.md's persona line...") but never cites the
+        commit that applied it — that commit is f0295a1 ("fix: GTF-3 remediate gateflow-review round-1
+        findings"), confirmed via its touched-file list matching exactly. Recorded here per the
+        append-only rule (the entry above is left unchanged), found by gateflow-review round 9 (of the
+        review file) as the last remaining gap in the citation trail.
+-->
+
+<!-- GOVERNANCE-CHANGE
 Authorized by: Josue — explicit, confirmed in chat ("remediar todo") in response to gateflow-review
                round 2 finding #1 (vague/commingled citation) and finding #5 (dash-style
                inconsistency) found in the entry above
