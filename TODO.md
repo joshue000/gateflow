@@ -72,6 +72,42 @@ override with its reason in `docs/gateflow/reviews/*.md`. If overrides start con
 generated PE's findings specifically — a real, free-to-observe pattern in data already being captured,
 no new instrumentation needed — that's the signal its judgment isn't well-calibrated for that stack.
 
+## gateflow-ship's SHA-match check can't survive its own review-file bookkeeping commit
+
+`gateflow-ship`'s Phase 1 requires `latest.sha == current HEAD` in the review file's last round. But
+recording that round (or logging a Gate 1 override) is itself a commit — the moment you commit the
+round/override entry, HEAD moves past the SHA the entry names, permanently. There's no way to make a
+commit's own content correctly cite its own future hash. Hit live on GTF-21: the override-logging commit
+(`6c20bf3`) immediately invalidated its own round's `SHA: 579e473` field relative to true HEAD.
+
+**Idea**: `gateflow-ship` Phase 1 should treat commits touching only `docs/gateflow/reviews/**` (the
+review file itself) as not invalidating the SHA match — i.e., diff `HEAD` against `latest.sha` and check
+whether every file in that diff is the review file itself, not a strict hash equality.
+
+**Why not now**: out of GTF-21's scope, and `gateflow-ship/SKILL.md` is an ordinary review-gated file
+(not self-amendment-protected, per `CLAUDE.md`'s own split), so this doesn't need governance-log
+authorization the way the hook's changes did — just its own small ticket, not a drive-by fix here.
+
+## Enforce the round-closing hash-backfill check in gateflow-review
+
+GTF-21's dogfooding run surfaced a recurring pattern (4 occurrences across one ticket): a
+`GOVERNANCE-CHANGE` entry authorizes a protected-file change with `Date: ... (commit hash to follow
+once applied)`, the fix lands, and the placeholder never gets backfilled until a *later* review round
+catches it — each time independently re-discovered, never prevented. The 3rd occurrence's own log entry
+(`claude/agents/GOVERNANCE-LOG.md`, `6970705` backfill) explicitly recommended a fix and it still
+recurred a 4th time.
+
+**Idea**: `gateflow-review/SKILL.md`'s Phase 7 (Persist), before marking a round's verdict `clean`/gate
+`LOCKED`, greps the relevant `GOVERNANCE-LOG.md` entry (if the round touched a self-amendment-protected
+file) for the literal string `commit hash to follow` and refuses to close the round — or at minimum
+warns loudly — until it's replaced with a real hash.
+
+**Why not now**: out of GTF-21's scope (that ticket was about the ask-gate not enforcing under
+`permissions.defaultMode:auto`, not about `gateflow-review`'s own persistence checklist), and
+`gateflow-review/SKILL.md` is itself one of the 6 self-amendment-protected files — changing it needs
+its own dedicated authorization, not a drive-by fix bundled into an already-long ticket. Revisit as its
+own small ticket; the fix itself is a few lines in Phase 7.
+
 ## Size-tiered multi-explorer/multi-architect planning fan-out
 
 `sdlc:implement`'s planning-playbook scales its scout→plan pipeline by ticket size (more explorer/
