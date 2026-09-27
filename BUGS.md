@@ -15,14 +15,18 @@ removing it).
 
 **Where found**: scouting GTF-20 (stop committing plan/review docs, persist as Jira/PR comments).
 
-**Design note, not yet a real incident**: `gateflow-ship` no longer auto-deletes the local review file
-(left on disk, the user decides when to remove it) — so in the normal case, `gateflow-review`'s Phase 3
-(round-numbering/consecutive-clean tracking, untouched by GTF-20) still finds it for a later Gate 2
-round. The only remaining edge: if the user manually deletes the review file between ship and a later
-Gate 2 pass, local round-numbering restarts at 1 even though the PR's comment thread still holds Gate
-1's full history (posted by `gateflow-ship`). Not fixed — this is a consequence of the user's own manual
-action, not a gap GTF-20 introduces silently. Logged per GTF-20's own "log anything genuinely uncertain"
-instruction, not because it's broken.
+**Design note, not yet a real incident**: `gateflow-ship`'s Phase 4 leaves the local review file on disk
+after posting it as a PR comment — an earlier draft of this same GTF-20 design considered auto-deleting
+it, but the repo owner corrected that during planning, before any code shipped. So in the normal case,
+`gateflow-review`'s Phase 3 (round-numbering/consecutive-clean tracking, untouched by GTF-20) still finds
+it for a later Gate 2 round. The only remaining edge: if the user manually deletes the review file
+between ship and a later Gate 2 pass, local round-numbering restarts at 1 even though the PR's comment
+thread still holds Gate 1's full history (posted by `gateflow-ship`). Not fixed — this is a consequence
+of the user's own manual action, not a gap GTF-20 introduces silently. Logged per GTF-20's own "log
+anything genuinely uncertain" instruction, not because it's broken.
+
+**Status**: open by design, no fix planned — user-triggered edge case, logged per GTF-20's "log anything
+uncertain" instruction.
 
 ### `planning-jira.sh transition-to` false-positives "already-there" between same-category statuses (e.g. activeWork → inReview)
 

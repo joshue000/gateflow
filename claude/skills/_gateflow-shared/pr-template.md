@@ -26,6 +26,6 @@ has the answer verbatim.
 | Section | Source | Rule |
 |---|---|---|
 | Summary | `git log <base>..HEAD` — the **full** range, not just the last commit | A squash merge collapses history into the PR title/body — this is the only place multi-commit context survives. Cluster by concept, not one bullet per commit |
-| Review | The local `docs/gateflow/reviews/<KEY>-review.md`'s latest round | State plainly if none exists — never imply a review happened. Full detail lives in the PR comment gateflow-ship posts right after opening the PR (GTF-20) — this section is a summary, not the only place the review's content survives |
+| Review | The local `docs/gateflow/reviews/<KEY>-review.md`'s latest round | State plainly if none exists — never imply a review happened. **If a review was performed**, full detail lives in the PR comment gateflow-ship posts right after opening the PR (GTF-20) — this section is a summary, not the only place the review's content survives |
 | Notes | Free-form — architectural context, migration steps | Omit the section entirely when there's nothing to say |
 | Test Plan | `get-ticket`'s description, parsed per `planning.settings.testPlanSource` | **Verbatim, never re-summarized** — if the ticket author wrote specific scenarios, paraphrasing them loses precision. Fallback: `- [ ] Verify the change locally and exercise the scenarios above` |

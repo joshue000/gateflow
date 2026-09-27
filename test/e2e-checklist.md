@@ -49,8 +49,9 @@ trusting the corresponding skill.
 - [ ] (GTF-20) The local review file (`docs/gateflow/reviews/<KEY>-review.md`) still exists on disk
       afterward — untouched, not deleted
 - [ ] (GTF-20) The local plan file (`docs/gateflow/plans/<KEY>-plan.md`) is gone from disk afterward
-- [ ] (GTF-20) Neither file shows up in `git status` at any point in this whole flow — confirm
-      `gateflow-init`'s `.gitignore` (or this repo's own, if dogfooding) actually excludes both paths
+- [ ] (GTF-20) Neither file shows up in `git status` at any point across the implement→review→ship run
+      you just completed — confirm `gateflow-init`'s `.gitignore` (or this repo's own, if dogfooding)
+      actually excludes both paths
 
 ## gateflow-docs
 
