@@ -397,8 +397,11 @@ logic fix (1) could not be applied to the tracked file through Claude Code tool 
 that added self-protection. The verified fixed content was instead prepared in an isolated scratch copy
 and handed to the repo owner, who applied it directly to the tracked file outside Claude Code's tool
 calls (commit `deda7ef`, "fix: GTF-21 protect the hook script itself, expand to 6 protected files").
-Banner comments referencing the file count/protection list were then synced across all 6 protected files
-(commit `067f0b9`, "docs: GTF-21 update self-amendment banners to 6 files").
+Banner comments referencing the file count/protection list were then synced across the 3 markdown-carrying
+protected files (`claude/agents/pe-governance.md`, `claude/skills/_gateflow-shared/pe-agent-template.md`,
+`claude/skills/gateflow-review/SKILL.md`; commit `067f0b9`, "docs: GTF-21 update self-amendment banners
+to 6 files") — the hook script's own banner was already updated in `deda7ef` above, and
+`.claude/settings.json`/`.gateflow/config.json` are pure JSON with no comment syntax to sync.
 
 **Verified**: 2026-09-15, fix (1)+(2)'s complete logic was written and tested against a byte-identical
 copy of the hook in an isolated scratch directory before being handed to the repo owner. All 4 round-4
@@ -597,3 +600,12 @@ hunting"), and `def8ea3` (comment-only bypass-7 heading correction). A verify-on
 passing, and found no new bypass class — the
 closing decision above holds. The hard guarantee is the unconditional Edit/Write/MultiEdit block, still
 the only path with no equivalent gap found across 7 rounds of dedicated adversarial review.
+
+**Documentation-audit tail closed (2026-09-15, explicit repo-owner decision, "si dale")**: rounds 4
+through 9 of `docs/gateflow/reviews/GTF-21-review.md` — all verify-only, no new bypass hunting — each
+still surfaced 1-3 new documentation/citation nits despite zero new security findings since round 3.
+Same unbounded-tail shape already recognized for Bash-bypass hunting, now recognized here too: closed
+by explicit decision rather than chasing a "genuinely zero findings" round that kept not arriving. The
+last 2 nits (round 9's `067f0b9`-scope overstatement and the missing `f0295a1` citation) are fixed
+directly, verified (48/48, direct read), without another dedicated review round. Any further nit found
+later gets a quick fix on sight, not another round.
