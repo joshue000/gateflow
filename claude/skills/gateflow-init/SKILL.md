@@ -140,7 +140,22 @@ write .gateflow/config.json
 ✅ config written
 ```
 
-## Phase 9 — CLAUDE.md
+## Phase 9 — `.gitignore`
+
+```
+lines_to_add = ["docs/gateflow/plans/", "docs/gateflow/reviews/"]
+  # gateflow-implement's plan and gateflow-review's review docs are working files persisted as a
+  # Jira/PR comment instead (GTF-20) — never meant to be committed
+
+if .gitignore exists at the project root:
+  append only the lines from lines_to_add that aren't already present (exact-line match) —
+    never duplicate, never touch any existing content
+else:
+  create .gitignore with a short comment explaining why, plus lines_to_add
+✅ .gitignore updated (or created)
+```
+
+## Phase 10 — CLAUDE.md
 
 ```
 if CLAUDE.md already exists at the project root:
@@ -204,6 +219,7 @@ if a .gateflow/config.json exists in the current project:
 ```
 print:
   - .gateflow/config.json written (or left as-is, if Phase 0 aborted)
+  - .gitignore updated (or created)
   - CLAUDE.md written / appended / skipped
 next steps:
   - if the sdd-* skill family is installed (optional, not bundled): /sdd-init to pick this project's
