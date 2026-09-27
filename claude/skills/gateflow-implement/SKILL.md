@@ -121,5 +121,5 @@ next steps: "/gateflow-review to check this branch, then /gateflow-ship when rea
 | User rejects the plan | Loop back into Phase 3 with their feedback — never loop back to Phase 2 |
 | Scope expansion mid-Phase-4 | Stop, surface it, never silently proceed |
 | New build/lint warnings | Fix before committing — this is a hard gate, not advisory |
-| `add-comment` fails (Phase 3) | Stop — Phase 4 must not begin without a real plan_comment_id |
-| `update-comment` fails (Phase 4 re-plan) | Stop — surface it, don't silently continue with a stale Jira copy of the plan |
+| `add-comment` fails (Phase 3) | Stop, Phase 4 must not begin without a real plan_comment_id |
+| `update-comment` fails (Phase 4 re-plan) | Stop, surface it, don't silently continue with a stale Jira copy of the plan |
