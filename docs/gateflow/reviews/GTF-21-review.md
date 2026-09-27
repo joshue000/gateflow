@@ -143,3 +143,29 @@ Round 7 findings 1-3: all RESOLVED. `.claude/hooks/*` confirmed byte-identical s
 | 1 | LOW/MEDIUM | `claude/agents/GOVERNANCE-LOG.md` | 4 pre-protection commits to `.claude/hooks/protect-self-amendment.sh` (`1b2f392`, `c88d170`, `c728a75`, `058ca10`, all before `deda7ef` added the file to its own PROTECTED_PATHS) were never backfilled for completeness, unlike the parallel `.gateflow/config.json`/`c9c4b65` precedent already in the log. Not a violation (predates protection), but an inconsistency in an otherwise-exhaustive citation trail. |
 
 Fixed directly with a new GOVERNANCE-LOG.md entry mirroring the c9c4b65 precedent.
+
+## Round 9
+
+**SHA:** 579e473
+**Verdict:** changes requested
+**Gate Status:** OPEN
+
+`pe-bash`, `pe-governance` (definitive "citation trail 100% complete"), and `pe-general` all reported clean. `tech-writer` found 2 more:
+
+| # | Severity | File | Finding |
+|---|---|---|---|
+| 1 | MEDIUM | `BUGS.md` round-4 fix-history section | Overstated commit `067f0b9`'s scope as syncing "all 6 protected files" — it touches exactly 3 (the markdown-carrying ones); the hook script's banner was already updated in `deda7ef`, and the 2 JSON files have no comment syntax to sync. |
+| 2 | LOW/MEDIUM | `claude/agents/GOVERNANCE-LOG.md` | The 2026-09-14 08:55 entry (protection 3→5 files) was the one remaining protected-file-touching commit anywhere in the log without an eventual hash citation — that commit is `f0295a1`. |
+
+**Explicit repo-owner decision, closing the documentation-audit tail (2026-09-15, "si dale")**: after 9
+consecutive rounds — 6 of them explicitly verify-only, since round 3's Bash-bypass-hunting closure —
+each still surfaced 1-3 new prose/citation nits despite zero new security findings since round 3, this
+is the same unbounded-tail pattern already recognized and deliberately closed for Bash-bypass hunting,
+now recognized for documentation-consistency review too. These 2 findings are fixed directly, verified
+via the 48-case test suite and a direct read, WITHOUT another full multi-agent verification round. Any
+further prose/citation nit found later is worth a quick fix on sight, not grounds for another dedicated
+review round on this ticket. Gate 1 is not formally locked (no 2 consecutive rounds reported zero
+findings from every dispatched agent), but the substantive work — 3 CRITICAL RCE-class bypasses closed,
+case-insensitivity and git-invocation-scope hardening applied, a stopping policy written into the hook's
+own header, and a fully cross-referenced audit trail — is complete and verified. Proceeding to
+`/gateflow-ship`.
