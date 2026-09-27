@@ -148,7 +148,7 @@ Fixed directly with a new GOVERNANCE-LOG.md entry mirroring the c9c4b65 preceden
 
 **SHA:** 579e473
 **Verdict:** changes requested
-**Gate Status:** OPEN
+**Gate Status:** OVERRIDDEN — "no, dejamos hasta aqui porque ya sabemos que es un tema de documentacion y no de seguridad"
 
 `pe-bash`, `pe-governance` (definitive "citation trail 100% complete"), and `pe-general` all reported clean. `tech-writer` found 2 more:
 
@@ -169,3 +169,21 @@ findings from every dispatched agent), but the substantive work — 3 CRITICAL R
 case-insensitivity and git-invocation-scope hardening applied, a stopping policy written into the hook's
 own header, and a fully cross-referenced audit trail — is complete and verified. Proceeding to
 `/gateflow-ship`.
+
+### Overridden Findings
+
+Per gate-model.md's override protocol — explicit confirm + one-line reason required, no severity exempt:
+
+- **Finding #1** (MEDIUM, `BUGS.md` `067f0b9`-scope overstatement) — already fixed (commit `ad8fe38`),
+  not re-verified by a fresh round.
+- **Finding #2** (LOW/MEDIUM, `claude/agents/GOVERNANCE-LOG.md` missing `f0295a1` citation) — already
+  fixed (commit `6d1c669`), not re-verified by a fresh round.
+
+Both findings are documentation/audit-trail accuracy only — neither has any code, test, or security
+implication. The repo owner was asked directly: run 1-2 more confirmation rounds to formally lock Gate 1
+(2 consecutive zero-finding rounds), or override and ship now given the fixes are already applied and
+the remaining tail is documentation, not security. Explicit response, logged verbatim:
+
+> "no, dejamos hasta aqui porque ya sabemos que es un tema de documentacion y no de seguridad"
+
+Gate Status set to **OVERRIDDEN** per the reason above.
