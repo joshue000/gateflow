@@ -9,6 +9,29 @@ removing it).
 
 ## Open
 
+### `planning-jira.sh transition-to` false-positives "already-there" between same-category statuses (e.g. activeWork → inReview)
+
+**Where found**: shipping GTF-21 (this repo), running `/gateflow-ship` Phase 5.
+
+**Symptom**: `transition-to GTF-21 inReview` returned `{"status":"already-there"}` while the ticket was
+still genuinely "In Progress" (confirmed via a direct `get-ticket` call immediately before and after,
+both showing `"status": "In Progress"`) — never actually transitioned.
+
+**Root cause (found, not just observed)**: `planning-jira.sh:49` maps BOTH `activeWork` and `inReview`
+semantic targets to the same Jira `statusCategory.key`, `"indeterminate"` — this is correct per Jira's
+own 3-category model (new/indeterminate/done), but the "already-there" check at line 54 only compares
+`statusCategory`, not the actual status NAME. So transitioning from "In Progress" (indeterminate) to
+"In Review" (also indeterminate) is indistinguishable, by this check, from already being in "In Review"
+— any `activeWork`→`inReview` transition on a workflow where both live in the same category will
+silently no-op instead of transitioning.
+
+**Status**: open, not fixed here — out of GTF-21's scope (this is `planning-jira.sh`, not the
+self-amendment hook). Worked around for GTF-21 itself by transitioning the ticket manually via `acli`
+with the exact status name. Fix idea: the "already-there" check should compare the actual status NAME
+against `jiraStatusCandidates.{target}` (the same list already used for the transition attempt below
+it), not just the coarse-grained category, when the category match is ambiguous between two configured
+semantic targets.
+
 ### `gateflow-review`'s current SKILL.md has no non-committed persistence option, which is self-contradictory for the exact ticket that removes committed review docs
 
 **Where found**: `fastender`, delivering FTE-29 (removing the committed `docs/gateflow/plans/*.md` /
