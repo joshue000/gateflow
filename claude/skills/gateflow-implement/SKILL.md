@@ -58,6 +58,13 @@ present the plan. HARD STOP:
   do NOT write any implementation code until the user replies with one of:
     approved | approve | go | lgtm | proceed | ship it
   a revision request loops back into this phase (uncapped) — never silently reinterpret feedback
+
+once approved, before Phase 4 starts:
+  result = planning-jira.sh add-comment key --body-file docs/gateflow/plans/{key}-plan.md
+  plan_comment_id = result.id   # held for the rest of this run — never persisted to disk, never
+                                 # re-derived from "the last comment" (a teammate could comment later)
+  the local plan file stays on disk, uncommitted (docs/gateflow/plans/ is gitignored) — it's the
+  working copy for the rest of this ticket's implementation, not just a one-time artifact
 ```
 
 ## Phase 4 — TDD implementation
@@ -85,6 +92,9 @@ if work grows beyond the approved plan's scope:
   STOP — surface the growth to the user (what the plan covered vs. what's now needed).
   options: approve the expansion (re-plan) | defer to a follow-up ticket | abort
   never silently expand scope
+  if re-planned: update the local plan file, then
+    planning-jira.sh update-comment key --id plan_comment_id --body-file docs/gateflow/plans/{key}-plan.md
+    (same comment stays current — never a second, orphaning-the-first comment)
 ```
 
 ## End
