@@ -16,3 +16,8 @@
 
 # Claude Code plugin-local state, not part of this project
 .token-optimizer/
+
+# gateflow-implement's plan and gateflow-review's review docs are working files, not committed
+# artifacts (GTF-20) — the plan is persisted as a Jira comment, the review as a PR comment
+docs/gateflow/plans/
+docs/gateflow/reviews/
