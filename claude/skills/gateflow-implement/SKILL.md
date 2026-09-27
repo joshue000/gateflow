@@ -61,6 +61,8 @@ present the plan. HARD STOP:
 
 once approved, before Phase 4 starts:
   result = planning-jira.sh add-comment key --body-file docs/gateflow/plans/{key}-plan.md
+  if add-comment fails: stop — Phase 4 must not begin without a real plan_comment_id (gateflow-ship's
+    later deletion depends on it)
   plan_comment_id = result.id   # held for the rest of this run — never persisted to disk, never
                                  # re-derived from "the last comment" (a teammate could comment later)
   the local plan file stays on disk, uncommitted (docs/gateflow/plans/ is gitignored) — it's the
@@ -95,6 +97,7 @@ if work grows beyond the approved plan's scope:
   if re-planned: update the local plan file, then
     planning-jira.sh update-comment key --id plan_comment_id --body-file docs/gateflow/plans/{key}-plan.md
     (same comment stays current — never a second, orphaning-the-first comment)
+    if update-comment fails: stop — surface it, don't silently continue with a stale Jira copy of the plan
 ```
 
 ## End
@@ -118,3 +121,5 @@ next steps: "/gateflow-review to check this branch, then /gateflow-ship when rea
 | User rejects the plan | Loop back into Phase 3 with their feedback — never loop back to Phase 2 |
 | Scope expansion mid-Phase-4 | Stop, surface it, never silently proceed |
 | New build/lint warnings | Fix before committing — this is a hard gate, not advisory |
+| `add-comment` fails (Phase 3) | Stop — Phase 4 must not begin without a real plan_comment_id |
+| `update-comment` fails (Phase 4 re-plan) | Stop — surface it, don't silently continue with a stale Jira copy of the plan |

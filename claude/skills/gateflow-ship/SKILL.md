@@ -64,7 +64,7 @@ reviewers = config.reviewers   # empty by default — solo project
 result = vcs-github.sh open-pr --base base --head branch --title title --body-file <body>
          [--reviewers (join reviewers with ',') if reviewers is non-empty]
 
-if result succeeded:
+if the PR was created (open-pr didn't fail):
   if review_file exists:
     vcs-github.sh comment-pr result.number --body-file review_file   # full file, every round — not
       # just the latest — best-effort, never blocks shipping on failure
@@ -72,6 +72,7 @@ if result succeeded:
   if plan file docs/gateflow/plans/{key}-plan.md exists:
     delete it   # its content already lives in the Jira comment gateflow-implement posted; by the time
                 # a PR is open nothing further will revise it
+    # if the delete fails: warn and keep going — cosmetic cleanup, never block a PR that's already open
 ```
 
 ## Phase 5 — Jira transition
@@ -89,6 +90,7 @@ if key is not null:
 print:
   - PR: {result.url}
   - Ticket: {key or "—"} -> in-review
+  - Plan file: removed (content preserved in Jira comment) | kept — delete failed, remove it manually
 next: "await reviewer activity, or run /gateflow-review again for Gate 2 once someone else reviews it"
 ```
 
@@ -103,4 +105,5 @@ next: "await reviewer activity, or run /gateflow-review again for Gate 2 once so
 | Review SHA stale vs. HEAD | Stop, ask to re-review |
 | `open-pr` fails | Stop, print the adapter's exact error |
 | Review-file PR comment fails | Warn, keep going — best-effort, never blocks a PR that's already open (GTF-20) |
+| Plan-file delete fails | Warn, keep going — cosmetic cleanup, don't block a PR that's already open |
 | Jira transition fails | Warn + print manual command, PR still stands — don't roll back a successful PR over this |

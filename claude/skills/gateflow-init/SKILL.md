@@ -84,7 +84,7 @@ for each named technology:
 
 peRoster = { fallback: "pe-general", pathRules: [...] }   # pre-existing + newly generated, in order
 
-stack_tags = tags implied by the stack answer, used again in Phase 9:
+stack_tags = tags implied by the stack answer, used again in Phase 10:
   "monorepo" if the answer mentions a monorepo / multiple apps/packages
   "docker" if it mentions Docker
   "codegen" if it mentions tsoa/GraphQL codegen/schema-generated types/OpenAPI generation
