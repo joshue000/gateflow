@@ -65,7 +65,9 @@ once approved, before Phase 4 starts:
     later deletion depends on it)
   plan_comment_id = result.id   # held for the rest of this run — never persisted to disk, never
                                  # re-derived from "the last comment" (a teammate could comment later)
-  the local plan file stays on disk, uncommitted (docs/gateflow/plans/ is gitignored) — it's the
+  the local plan file stays on disk, uncommitted (docs/gateflow/plans/ is gitignored, assuming
+  gateflow-init's Phase 9 has run — or the .gitignore lines were added by hand; a project that adopted
+  gateflow before this change and hasn't rerun /gateflow-init won't have the exclusion yet) — it's the
   working copy for the rest of this ticket's implementation, not just a one-time artifact
 ```
 
@@ -121,5 +123,5 @@ next steps: "/gateflow-review to check this branch, then /gateflow-ship when rea
 | User rejects the plan | Loop back into Phase 3 with their feedback — never loop back to Phase 2 |
 | Scope expansion mid-Phase-4 | Stop, surface it, never silently proceed |
 | New build/lint warnings | Fix before committing — this is a hard gate, not advisory |
-| `add-comment` fails (Phase 3) | Stop, Phase 4 must not begin without a real plan_comment_id |
+| `add-comment` fails (Phase 3) | Stop, Phase 4 must not begin without a real plan_comment_id, and don't blindly retry: a comment may already exist on the ticket from the failed attempt, so check Jira before re-invoking add-comment — a retry could double-post |
 | `update-comment` fails (Phase 4 re-plan) | Stop, surface it, don't silently continue with a stale Jira copy of the plan |

@@ -27,7 +27,8 @@ trusting the corresponding skill.
 - [ ] The run genuinely halts at the approval gate — assert zero code written pre-approval
 - [ ] Post-approval, TDD commits land with conventional messages referencing the ticket key
 - [ ] (GTF-20) Right after approval, the plan's full content appears as a Jira comment on the ticket —
-      not paraphrased, and `git status` shows `docs/gateflow/plans/<KEY>-plan.md` as untracked
+      not paraphrased, and `docs/gateflow/plans/<KEY>-plan.md` does not appear under plain `git status`
+      (it's gitignored)
 - [ ] (GTF-20) Trigger a scope-growth re-plan mid-Phase-4 — the SAME Jira comment updates in place
       (same comment ID, new body) rather than a second comment appearing
 
@@ -49,9 +50,10 @@ trusting the corresponding skill.
 - [ ] (GTF-20) The local review file (`docs/gateflow/reviews/<KEY>-review.md`) still exists on disk
       afterward — untouched, not deleted
 - [ ] (GTF-20) The local plan file (`docs/gateflow/plans/<KEY>-plan.md`) is gone from disk afterward
-- [ ] (GTF-20) Neither file shows up in `git status` at any point across the implement→review→ship run
-      you just completed — confirm `gateflow-init`'s `.gitignore` (or this repo's own, if dogfooding)
-      actually excludes both paths
+- [ ] (GTF-20) Neither file shows up under plain `git status` at any point across the implement→review→
+      ship run you just completed — confirm `gateflow-init`'s `.gitignore` (or this repo's own, if
+      dogfooding) actually excludes both paths; optionally confirm with `git status --ignored`, where
+      both should appear listed under "Ignored files:"
 
 ## gateflow-docs
 

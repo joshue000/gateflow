@@ -25,8 +25,9 @@ thread still holds Gate 1's full history (posted by `gateflow-ship`). Not fixed 
 of the user's own manual action, not a gap GTF-20 introduces silently. Logged per GTF-20's own "log
 anything genuinely uncertain" instruction, not because it's broken.
 
-**Status**: open by design, no fix planned — user-triggered edge case, logged per GTF-20's "log anything
-uncertain" instruction.
+**Status**: open by design, no fix planned. If hit, treat Gate 1's PR comment thread as the
+authoritative history and manually restore the local review file (or note the discrepancy) before
+resuming Gate 2 rounds — don't trust the restarted local counter alone.
 
 ### `planning-jira.sh transition-to` false-positives "already-there" between same-category statuses (e.g. activeWork → inReview)
 
