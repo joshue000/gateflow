@@ -155,7 +155,7 @@ Logged here first per the Deferred-work rule so the direction isn't lost before 
 
 ## gateflow-ship's SHA-match check can't survive its own review-file bookkeeping commit — obsoleted by GTF-20
 
-**Tracked as:** GTF-20
+**Built via:** GTF-20 (commit 4676cc2)
 
 Originally logged because recording a review round (or a Gate 1 override) was itself a commit to
 `docs/gateflow/reviews/{key}-review.md`, so HEAD always moved past the SHA that round named — hit live
