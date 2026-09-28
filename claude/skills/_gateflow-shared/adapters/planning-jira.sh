@@ -106,8 +106,8 @@ case "$op" in
     id="" body_file=""
     while [ $# -gt 0 ]; do
       case "$1" in
-        --id) id="$2"; shift 2 ;;
-        --body-file) body_file="$2"; shift 2 ;;
+        --id) [ $# -ge 2 ] || die "update-comment: --id requires a value"; id="$2"; shift 2 ;;
+        --body-file) [ $# -ge 2 ] || die "update-comment: --body-file requires a value"; body_file="$2"; shift 2 ;;
         *) shift ;;
       esac
     done
