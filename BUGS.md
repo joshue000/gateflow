@@ -54,6 +54,8 @@ semantic targets.
 
 ### `gateflow-review`'s current SKILL.md has no non-committed persistence option, which is self-contradictory for the exact ticket that removes committed review docs
 
+**Tracked as:** GTF-20
+
 **Where found**: `fastender`, delivering FTE-29 (removing the committed `docs/gateflow/plans/*.md` /
 `docs/gateflow/reviews/*.md` convention, backfilling the old content as Jira/PR comments instead),
 2026-09-14.
@@ -95,6 +97,8 @@ so live confirmation is still pending — not flipping to Resolved until that e2
 
 ### Batch-created Jira tickets can have summary/description desynced by one item
 
+**Tracked as:** GTF-5
+
 **Where found**: `fastender`, `gateflow-plan create-from-sdd inventario-mvp`, 2026-09-07.
 
 **Symptom**: Created 7 Story tickets via `_gateflow-shared/adapters/planning-jira.sh create-ticket`,
@@ -130,6 +134,8 @@ which is what the workaround above does by hand).
 
 ### `transition-to` reported "already-there" for a ticket that was NOT already there
 
+**Tracked as:** GTF-6
+
 **Where found**: `fastender`, `gateflow-implement FTE-16`, Phase 2 (branch + transition), 2026-09-07.
 
 **Symptom**: `planning-jira.sh transition-to FTE-16 activeWork` printed `{"status":"already-there"}` —
@@ -155,6 +161,8 @@ happened when one did (or vice versa).
 fallback logic (not just its status message).
 
 ### `ensure-account` hard-requires `.gateflow/config.json` before gateflow-init ever writes one
+
+**Tracked as:** GTF-4
 
 **Where found**: gateflow (this repo), `gateflow-init` Phase 2, 2026-09-13.
 
@@ -192,6 +200,8 @@ signature implies was the original intent.
 **Status**: unresolved, blocks `gateflow-init` Phase 2 on every fresh project until fixed.
 
 ### `create-ticket`'s `--description-file` rejects an empty file
+
+**Tracked as:** GTF-7
 
 **Where found**: gateflow (this repo), `gateflow-init` Phase 6, 2026-09-13, creating the throwaway
 status-verification ticket.
@@ -313,6 +323,8 @@ hid for a while simply because its buggy line wasn't on the common path (the `al
 early-return almost always fired first).
 
 ### CRITICAL: self-amendment `ask` gate doesn't reliably enforce at all under `defaultMode: auto` — not just a Bash coverage gap
+
+**Tracked as:** GTF-21
 
 **Where found**: gateflow (this repo), gateflow-review round 1, 2026-09-14 (Bash-coverage gap first
 found); confirmed broader and more severe via a live test, 2026-09-14, same session (after a restart,
