@@ -11,6 +11,8 @@ not an entry itself, even though entries beneath it share its heading level.
 
 ## Requirements fallback when `sdd-*` isn't installed
 
+**Tracked as:** GTF-11
+
 `gateflow-plan create-from-sdd` depends on a file shape (`requirements-artifact-contract.md`), not on
 the `sdd-*` skill family specifically — but without `sdd-*`, producing a good `proposal.md`/`tasks.md`
 means doing that structuring work by hand, which is real friction, not just filling a template.
@@ -26,6 +28,8 @@ has, at the cost of real complexity today. Revisit if/when gateflow is ever used
 
 ## AGENTS.md compatibility
 
+**Tracked as:** GTF-12
+
 `AGENTS.md` is an open, cross-tool convention for repo-level agent governance (formalized August 2025,
 OpenAI-led with Google/Cursor/Factory participation) — other AI coding tools read it the way Claude Code
 reads `CLAUDE.md`. `claude-md-template.md` could ship both files (or one that satisfies both) so a
@@ -35,6 +39,8 @@ gateflow-bootstrapped project isn't Claude-Code-only.
 Revisit if gateflow (or a project using it) is ever worked on with a different AI coding tool.
 
 ## Other backends (adapter contracts already support adding these — see architecture.md)
+
+**Tracked as:** GTF-13
 
 - **Notion / Obsidian** planning adapters (alternative to Jira)
 - **Bitbucket / GitLab** VCS adapter (alternative to GitHub)
@@ -49,11 +55,15 @@ prove the seam works before widening it. Adding a second backend on either side 
 
 ## Team-routing / multi-reviewer roster resolution
 
+**Tracked as:** GTF-14
+
 Not needed for a solo project — `reviewers` in config is a plain list, no algorithm needed. Revisit only
 if a project actually gains collaborators and reviewer assignment needs real logic (whole-team / specific
 engineers / cross-team supporters — a pattern seen in similar internal tooling elsewhere).
 
 ## Worktree isolation for concurrent reviews
+
+**Tracked as:** GTF-15
 
 Confirmed (while researching `sdlc`'s reference material) that this mechanism is fully host-agnostic —
 sibling hidden git-worktree directory, reuse-detect via `git worktree list --porcelain`, fall back to
@@ -61,6 +71,8 @@ in-place on failure. Cheap to add later. Deferred because nothing today runs con
 repo.
 
 ## Verification loop for generated PE agents
+
+**Tracked as:** GTF-16
 
 `gateflow-init`/`add-pe` generates a new PE from `pe-agent-template.md` grounded in real project files
 when available — but unlike the Jira status check (verified against a live throwaway ticket), a
@@ -98,6 +110,8 @@ its own dedicated authorization, not a drive-by fix bundled into an already-long
 own small ticket; the fix itself is a few lines in Phase 7.
 
 ## Size-tiered multi-explorer/multi-architect planning fan-out
+
+**Tracked as:** GTF-17
 
 `sdlc:implement`'s planning-playbook scales its scout→plan pipeline by ticket size (more explorer/
 architect agents for XL tickets). `gateflow-implement` currently does a single-pass scout+plan for
