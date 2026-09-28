@@ -23,6 +23,12 @@ the `gateflow` repo's `docs/architecture.md`. **Do not restate or re-derive thes
 needs to change, change it in `gateflow`, not in prose in this file. Two places disagreeing on a rule
 is worse than one place being briefly wrong.
 
+## Reporting gateflow bugs
+
+If something about `gateflow` itself misbehaves while working in this repo — not a bug in this
+project's own code — don't patch it locally: file it at
+https://github.com/joshue000/gateflow/issues so the fix lands upstream for every project using it.
+
 ## Engineering Principles
 
 {UNIVERSAL_PRINCIPLES}
