@@ -105,9 +105,12 @@ if work grows beyond the approved plan's scope:
       if none found: fall back to a fresh add-comment key --body-file docs/gateflow/plans/{key}-plan.md
         (accepting a possible duplicate comment as the least-bad outcome), use its returned id as
         plan_comment_id, and warn the user a duplicate plan comment may now exist on the ticket
-    planning-jira.sh update-comment key --id plan_comment_id --body-file docs/gateflow/plans/{key}-plan.md
-    (same comment stays current — never a second, orphaning-the-first comment)
-    if update-comment fails: stop — surface it, don't silently continue with a stale Jira copy of the plan
+        — that comment already holds the current plan content, so skip the update-comment call below
+    if plan_comment_id was already set, or was just recovered via the search above (i.e. not the
+      fresh-add-comment fallback): planning-jira.sh update-comment key --id plan_comment_id
+      --body-file docs/gateflow/plans/{key}-plan.md
+      (same comment stays current — never a second, orphaning-the-first comment)
+      if update-comment fails: stop — surface it, don't silently continue with a stale Jira copy of the plan
 ```
 
 ## End
