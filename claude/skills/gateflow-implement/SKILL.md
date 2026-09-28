@@ -103,6 +103,8 @@ if work grows beyond the approved plan's scope:
       in-memory value from Phase 3): search the ticket's comments for one authored this run whose body
       matches the prior plan file's content, and use its id in place of plan_comment_id
       if none found: fall back to a fresh add-comment key --body-file docs/gateflow/plans/{key}-plan.md
+        if add-comment fails: stop — surface it; the re-plan can't proceed without some Jira record
+          of the current plan content
         (accepting a possible duplicate comment as the least-bad outcome), use its returned id as
         plan_comment_id, and warn the user a duplicate plan comment may now exist on the ticket
         — that comment already holds the current plan content, so skip the update-comment call below
