@@ -217,6 +217,8 @@ one-line-placeholder doc fix before this can move to Resolved.
 
 ### gateflow-ship's SHA-match check is unsatisfiable when the review file itself gets committed
 
+**Tracked as:** GTF-20
+
 **Where found**: gateflow (this repo), gateflow-ship Phase 1 preflight, 2026-09-14, shipping GTF-3.
 
 **Symptom**: `gateflow-review`'s Phase 7 persists the review verdict by committing
