@@ -58,6 +58,19 @@ present the plan. HARD STOP:
   do NOT write any implementation code until the user replies with one of:
     approved | approve | go | lgtm | proceed | ship it
   a revision request loops back into this phase (uncapped) — never silently reinterpret feedback
+
+once approved, before Phase 4 starts:
+  result = planning-jira.sh add-comment key --body-file docs/gateflow/plans/{key}-plan.md
+  if add-comment fails: stop — Phase 4 must not begin without add-comment having succeeded
+    (gateflow-ship's later plan-file deletion trusts the plan's content is already safely persisted
+    in Jira; it never reads plan_comment_id itself — that id is only used within this same run, by
+    update-comment)
+  plan_comment_id = result.id   # held for the rest of this run — never persisted to disk, never
+                                 # re-derived from "the last comment" (a teammate could comment later)
+  the local plan file stays on disk, uncommitted (docs/gateflow/plans/ is gitignored, assuming
+  gateflow-init's Phase 9 has run — or the .gitignore lines were added by hand; a project that adopted
+  gateflow before this change and hasn't rerun /gateflow-init won't have the exclusion yet) — it's the
+  working copy for the rest of this ticket's implementation, not just a one-time artifact
 ```
 
 ## Phase 4 — TDD implementation
@@ -85,6 +98,21 @@ if work grows beyond the approved plan's scope:
   STOP — surface the growth to the user (what the plan covered vs. what's now needed).
   options: approve the expansion (re-plan) | defer to a follow-up ticket | abort
   never silently expand scope
+  if re-planned: update the local plan file, then
+    if plan_comment_id is unset (a resumed session — post-/clear or lossy auto-compaction dropped the
+      in-memory value from Phase 3): search the ticket's comments for one authored this run whose body
+      matches the prior plan file's content, and use its id in place of plan_comment_id
+      if none found: fall back to a fresh add-comment key --body-file docs/gateflow/plans/{key}-plan.md
+        if add-comment fails: stop — surface it; the re-plan can't proceed without some Jira record
+          of the current plan content
+        (accepting a possible duplicate comment as the least-bad outcome), use its returned id as
+        plan_comment_id, and warn the user a duplicate plan comment may now exist on the ticket
+        — that comment already holds the current plan content, so skip the update-comment call below
+    if plan_comment_id was already set, or was just recovered via the search above (i.e. not the
+      fresh-add-comment fallback): planning-jira.sh update-comment key --id plan_comment_id
+      --body-file docs/gateflow/plans/{key}-plan.md
+      (same comment stays current — never a second, orphaning-the-first comment)
+      if update-comment fails: stop — surface it, don't silently continue with a stale Jira copy of the plan
 ```
 
 ## End
@@ -108,3 +136,6 @@ next steps: "/gateflow-review to check this branch, then /gateflow-ship when rea
 | User rejects the plan | Loop back into Phase 3 with their feedback — never loop back to Phase 2 |
 | Scope expansion mid-Phase-4 | Stop, surface it, never silently proceed |
 | New build/lint warnings | Fix before committing — this is a hard gate, not advisory |
+| `add-comment` fails (Phase 3) | Stop, Phase 4 must not begin without a real plan_comment_id, and don't blindly retry: a comment may already exist on the ticket from the failed attempt, so check Jira before re-invoking add-comment — a retry could double-post |
+| `add-comment` fails (Phase 4 re-plan fresh-fallback) | Stop, surface it — the re-plan can't proceed without some Jira record of the current plan content |
+| `update-comment` fails (Phase 4 re-plan) | Stop, surface it, don't silently continue with a stale Jira copy of the plan |

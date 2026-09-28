@@ -72,21 +72,18 @@ override with its reason in `docs/gateflow/reviews/*.md`. If overrides start con
 generated PE's findings specifically — a real, free-to-observe pattern in data already being captured,
 no new instrumentation needed — that's the signal its judgment isn't well-calibrated for that stack.
 
-## gateflow-ship's SHA-match check can't survive its own review-file bookkeeping commit
+## gateflow-ship's SHA-match check can't survive its own review-file bookkeeping commit — obsoleted by GTF-20
 
-`gateflow-ship`'s Phase 1 requires `latest.sha == current HEAD` in the review file's last round. But
-recording that round (or logging a Gate 1 override) is itself a commit — the moment you commit the
-round/override entry, HEAD moves past the SHA the entry names, permanently. There's no way to make a
-commit's own content correctly cite its own future hash. Hit live on GTF-21: the override-logging commit
-(`6c20bf3`) immediately invalidated its own round's `SHA: 579e473` field relative to true HEAD.
+Originally logged because recording a review round (or a Gate 1 override) was itself a commit to
+`docs/gateflow/reviews/{key}-review.md`, so HEAD always moved past the SHA that round named — hit live
+on GTF-21, where the override-logging commit (`6c20bf3`) immediately invalidated its own round's
+`SHA: 579e473` field relative to true HEAD.
 
-**Idea**: `gateflow-ship` Phase 1 should treat commits touching only `docs/gateflow/reviews/**` (the
-review file itself) as not invalidating the SHA match — i.e., diff `HEAD` against `latest.sha` and check
-whether every file in that diff is the review file itself, not a strict hash equality.
-
-**Why not now**: out of GTF-21's scope, and `gateflow-ship/SKILL.md` is an ordinary review-gated file
-(not self-amendment-protected, per `CLAUDE.md`'s own split), so this doesn't need governance-log
-authorization the way the hook's changes did — just its own small ticket, not a drive-by fix here.
+**Why this no longer applies**: GTF-20 (this repo) removed the premise — `gateflow-ship`'s Phase 4 no
+longer commits the review file at all; it posts the round content as a PR comment and leaves the file
+on disk, gitignored (`2668509`, `44cc539`, `4676cc2`). With no review-file commit ever landing, there's
+no SHA left for HEAD to move past, so the scenario this idea was meant to work around can't occur.
+No fix needed.
 
 ## Enforce the round-closing hash-backfill check in gateflow-review
 
@@ -115,3 +112,35 @@ architect agents for XL tickets). `gateflow-implement` currently does a single-p
 every ticket size. Deferred because the SDD flow already gives this shape at the requirements layer
 (propose→spec→design→tasks) before a ticket ever reaches `gateflow-implement` — the need for gateflow's
 own implementation-planning to also fan out by size hasn't shown up yet.
+
+## Unguarded `$2` consumption in planning-jira.sh's add-comment and create-ticket
+
+GTF-20 Gate 1 Round 4 finding 2 fixed `update-comment`'s `--id`/`--body-file` flag parsing so it guards
+against a missing value (`[ $# -ge 2 ] || die ...`) instead of crashing on bash's raw "unbound variable"
+error under `set -euo pipefail`. The identical unguarded pattern — consuming `$2` right after matching a
+flag, with no value-presence check first — also exists in `add-comment`'s `--body-file` parsing
+(`claude/skills/_gateflow-shared/adapters/planning-jira.sh` ~line 82) and in `create-ticket`'s
+flag-parsing loop (~lines 123-126) of the same file.
+
+**Why not now**: out of scope for that finding, which was restricted to `update-comment` specifically.
+Revisit as its own small fix — apply the same guard pattern to `add-comment` and `create-ticket`.
+
+## Interactive tier banner-confirmation gate in gateflow-review
+
+`sdlc`'s reference implementation (`review/SKILL.md` lines 509-538) renders an `AskUserQuestion`
+banner on every review invocation — "(yes) Proceed at tier {session.tier}" listed first, plus explicit
+TRIVIAL/STANDARD/DEEP overrides and a "(no)" to stop — after its own pre-dispatch judgment pass can
+already raise the tier above the mechanical floor. `gateflow-review`'s tier system
+(`_gateflow-shared/tier-classifier.md`) is fully deterministic and silent instead: a mechanical
+size/path floor plus a content-judgment escalate-only pass that logs a one-line rationale but never
+prompts. Confirmed by direct read of both files, not assumed.
+
+**Idea**: add a banner-confirmation gate to `gateflow-review/SKILL.md`, right after tier
+classification, mirroring `sdlc`'s pattern — surface the computed tier and its source (mechanical
+floor vs. judgment-escalated) via `AskUserQuestion`, with "(yes) Proceed at tier {tier}" listed first
+and explicit TRIVIAL/STANDARD/DEEP overrides available.
+
+**Why not now**: `gateflow-review/SKILL.md` is one of the 6 self-amendment-protected governance files
+(see CLAUDE.md's Security posture section) — a change needs the repo owner's explicit, standalone
+sign-off on that specific change, never inferred from a general "yes, add the banner" in conversation.
+Logged here first per the Deferred-work rule so the direction isn't lost before that sign-off is given.

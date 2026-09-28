@@ -26,6 +26,11 @@ trusting the corresponding skill.
 - [ ] Plan doc is produced at `docs/gateflow/plans/<KEY>-plan.md`
 - [ ] The run genuinely halts at the approval gate — assert zero code written pre-approval
 - [ ] Post-approval, TDD commits land with conventional messages referencing the ticket key
+- [ ] Right after approval, the plan's full content appears as a Jira comment on the ticket —
+      not paraphrased, and `docs/gateflow/plans/<KEY>-plan.md` does not appear under plain `git status`
+      (it's gitignored)
+- [ ] Trigger a scope-growth re-plan mid-Phase-4 — the SAME Jira comment updates in place
+      (same comment ID, new body) rather than a second comment appearing
 
 ## gateflow-review
 
@@ -40,6 +45,17 @@ trusting the corresponding skill.
 - [ ] Push succeeds
 - [ ] All four PR sections populate — spot-check the Test Plan section is verbatim, not paraphrased
 - [ ] Jira flips to the in-review status
+- [ ] Right after the PR opens, the full local review file's content (all rounds) appears as
+      a PR comment
+- [ ] The local review file (`docs/gateflow/reviews/<KEY>-review.md`) still exists on disk
+      afterward — untouched, not deleted
+- [ ] The local plan file (`docs/gateflow/plans/<KEY>-plan.md`) is gone from disk afterward
+- [ ] Neither file shows up under plain `git status` at any point across the implement→review→
+      ship run you just completed — confirm `gateflow-init`'s `.gitignore` (or this repo's own, if
+      dogfooding) actually excludes both paths. Optionally confirm with `git status --ignored`: earlier
+      in the run (before ship deletes the plan file), both paths would have appeared listed under
+      "Ignored files:"; afterward only the review file still does — the plan file is gone, and a
+      deleted path can't appear under `--ignored`
 
 ## gateflow-docs
 

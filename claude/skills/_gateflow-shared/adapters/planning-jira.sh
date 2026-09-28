@@ -82,6 +82,36 @@ case "$op" in
     while [ $# -gt 0 ]; do case "$1" in --body-file) body_file="$2"; shift 2 ;; *) shift ;; esac; done
     [ -n "$key" ] && [ -n "$body_file" ] || die "add-comment requires <KEY> --body-file"
     acli jira workitem comment create --key "$key" --body-file "$body_file" >/dev/null || die "acli comment create failed"
+    # `comment create`'s --json output returns the work item key, not the comment id (confirmed live).
+    # `--order -created --limit 1` fetches just the newest comment directly instead of paging: acli
+    # defaults to ascending-oldest, 50-per-page, no auto-pagination — see planning-adapter-contract.md.
+    posted_body="$(cat "$body_file")" || die "add-comment: could not read $body_file"
+    last_comment="$(acli jira workitem comment list --key "$key" --order -created --limit 1 --json | jq -c '.comments[0]')" \
+      || die "acli comment list failed after create — cannot confirm the new comment's id"
+    last_body="$(printf '%s' "$last_comment" | jq -r '.body')"
+    # Sanity-check against the posted body before trusting the id: a caller needs a real id to update
+    # this exact comment later via update-comment, not a "last comment" heuristic a concurrent comment
+    # could invalidate. Mismatch means a comment now exists but its id is unconfirmed — fail, don't retry.
+    [ "$last_body" = "$posted_body" ] \
+      || die "add-comment: the most recent comment's body does not match what was just posted -- refusing to return a possibly-wrong id"
+    comment_id="$(printf '%s' "$last_comment" | jq -r '.id')"
+    [ -n "$comment_id" ] && [ "$comment_id" != "null" ] \
+      || die "add-comment: could not extract a comment id from the matched comment"
+    printf '{"ok":true,"id":"%s"}\n' "$comment_id"
+    ;;
+
+  update-comment)
+    key="${1:-}"; shift || true
+    id="" body_file=""
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --id) [ $# -ge 2 ] || die "update-comment: --id requires a value"; id="$2"; shift 2 ;;
+        --body-file) [ $# -ge 2 ] || die "update-comment: --body-file requires a value"; body_file="$2"; shift 2 ;;
+        *) shift ;;
+      esac
+    done
+    [ -n "$key" ] && [ -n "$id" ] && [ -n "$body_file" ] || die "update-comment requires <KEY> --id <ID> --body-file"
+    acli jira workitem comment update --key "$key" --id "$id" --body-file "$body_file" >/dev/null || die "acli comment update failed"
     echo '{"ok":true}'
     ;;
 

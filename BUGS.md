@@ -9,6 +9,26 @@ removing it).
 
 ## Open
 
+### Gate 2 round-continuity if a user manually deletes a shipped review file before a post-ship round
+
+**Tracked as:** GTF-20
+
+**Where found**: scouting GTF-20 (stop committing plan/review docs, persist as Jira/PR comments).
+
+**Design note, not yet a real incident**: `gateflow-ship`'s Phase 4 leaves the local review file on disk
+after posting it as a PR comment — an earlier draft of this same GTF-20 design considered auto-deleting
+it, but the repo owner corrected that during planning, before any code shipped. So in the normal case,
+`gateflow-review`'s Phase 3 (round-numbering/consecutive-clean tracking, untouched by GTF-20) still finds
+it for a later Gate 2 round. The only remaining edge: if the user manually deletes the review file
+between ship and a later Gate 2 pass, local round-numbering restarts at 1 even though the PR's comment
+thread still holds Gate 1's full history (posted by `gateflow-ship`). Not fixed — this is a consequence
+of the user's own manual action, not a gap GTF-20 introduces silently. Logged per GTF-20's own "log
+anything genuinely uncertain" instruction, not because it's broken.
+
+**Status**: open by design, no fix planned. If hit, treat Gate 1's PR comment thread as the
+authoritative history and manually restore the local review file (or note the discrepancy) before
+resuming Gate 2 rounds — don't trust the restarted local counter alone.
+
 ### `planning-jira.sh transition-to` false-positives "already-there" between same-category statuses (e.g. activeWork → inReview)
 
 **Where found**: shipping GTF-21 (this repo), running `/gateflow-ship` Phase 5.
@@ -63,9 +83,15 @@ consecutive clean rounds, same HEAD SHA) was tracked in conversation instead of 
 `gateflow-implement`/`gateflow-review`/`gateflow-ship`'s SKILL.md files, this stops being a workaround
 and becomes the documented default — no separate fix needed here beyond that feature landing.
 
-**Status**: unresolved, blocked on the pending feature request (tracked separately, not in this file —
-see the `gateflow-fb` session/conversation for the drafted prompt). Not re-logging the feature request
-itself here since it's a design decision already made and handed off, not an anomaly of unclear cause.
+**Update (GTF-20, this repo)**: the feature has since landed in code — `122234a` (post plan as a Jira
+comment in `gateflow-implement` Phase 3) and `2668509` (post review as PR comment and delete plan file
+in `gateflow-ship`), with follow-up hardening in `6fd748b`, `44cc539`, `4676cc2`, `837318c`. All three
+SKILL.md files now document the non-committed persistence path directly — this stops being a workaround
+gap as of these commits.
+
+**Status**: implemented in code as of the commits above. Still **Open**: `test/e2e-checklist.md`'s
+gateflow-implement/gateflow-review/gateflow-ship sections covering this design are entirely unchecked,
+so live confirmation is still pending — not flipping to Resolved until that e2e pass happens.
 
 ### Batch-created Jira tickets can have summary/description desynced by one item
 
@@ -217,8 +243,15 @@ interim fix: gateflow-ship's Phase 1 SHA check could special-case "HEAD's only n
 locked SHA touches solely the review file itself" as an automatic pass, rather than requiring manual
 override every time.
 
-**Status**: unresolved, expected to be structurally fixed by GTF-20; the narrower interim fix is not
-implemented.
+**Status**: code-level fix landed — `2668509` (feat: post review as PR comment and delete plan file in
+gateflow-ship) stopped committing the review file at all, and `44cc539`/`4676cc2` gitignored
+`docs/gateflow/reviews/` and untracked the two review files that were already committed under the old
+design. `gateflow-ship`'s current Phase 1 + Phase 4 (re-checked directly) never commit or delete the
+review file, so there's no SHA left to chase — this bug's scenario is now structurally impossible in
+code, not just planned to be. Still **Open**: `test/e2e-checklist.md`'s gateflow-ship section (the
+review-file-persists-on-disk / plan-file-deleted / neither-file-under-`git status` checks) is entirely
+unchecked, so this hasn't been confirmed live yet. The narrower interim fix described above is now moot
+and was never implemented (not needed, since the structural fix landed instead).
 
 ### `transition-to` short-circuits on statusCategory match even when the target is a genuinely different status
 
