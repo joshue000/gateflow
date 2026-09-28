@@ -4,9 +4,10 @@ Things deliberately NOT built into MVP v1, with the reasoning for deferring — 
 these later starts from "here's why we said not yet," not from scratch. Nothing here is forgotten by
 being absent from the code; if it's not on this list, it wasn't considered, not just left out.
 
-An entry moves to `## Done` at the end of this file once its ticket is actually resolved (or the idea
-is otherwise confirmed obsolete) — see CLAUDE.md's Deferred-work rule for the `**Tracked as:** GTF-N`
-convention that precedes the move. Never deleted, only moved.
+An entry moves under `## Done` at the end of this file once its ticket is actually resolved (or the
+idea is otherwise confirmed obsolete) — see CLAUDE.md's Deferred-work rule for the `**Tracked as:**
+GTF-N` convention that precedes the move. Never deleted, only moved. `## Done` is a section divider,
+not an entry itself, even though entries beneath it share its heading level.
 
 ## Requirements fallback when `sdd-*` isn't installed
 
