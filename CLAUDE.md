@@ -14,9 +14,11 @@ future session — looking at just the repo (a fresh clone, another machine). A 
 in chat history is a decision that gets re-litigated from scratch the next time it comes up.
 
 **Convention**: once a deferred idea lands a real Jira ticket, add `**Tracked as:** GTF-N` right after
-its heading in `TODO.md`, then move the whole entry (unchanged body) under a `## Done` section at the
-end of the file — never delete it. This is how a reader (or a future session) tells "still deferred"
-apart from "already resolved" without cross-checking Jira.
+its heading in `TODO.md` — the entry stays where it is while the ticket is open. Once the ticket is
+actually resolved (or the idea is otherwise confirmed obsolete), move the whole entry (unchanged body)
+under a `## Done` section at the end of the file — never delete it. This is how a reader (or a future
+session) tells "still deferred," "ticketed but still open," and "already resolved" apart without
+cross-checking Jira.
 
 ## Dogfooding rule
 
