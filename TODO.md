@@ -144,6 +144,6 @@ floor vs. judgment-escalated) via `AskUserQuestion`, with "(yes) Proceed at tier
 and explicit TRIVIAL/STANDARD/DEEP overrides available.
 
 **Why not now**: `gateflow-review/SKILL.md` is one of the 6 self-amendment-protected governance files
-(see this file's Security posture section) — a change needs the repo owner's explicit, standalone
+(see CLAUDE.md's Security posture section) — a change needs the repo owner's explicit, standalone
 sign-off on that specific change, never inferred from a general "yes, add the banner" in conversation.
 Logged here first per the Deferred-work rule so the direction isn't lost before that sign-off is given.
