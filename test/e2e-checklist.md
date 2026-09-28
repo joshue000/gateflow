@@ -52,8 +52,10 @@ trusting the corresponding skill.
 - [ ] (GTF-20) The local plan file (`docs/gateflow/plans/<KEY>-plan.md`) is gone from disk afterward
 - [ ] (GTF-20) Neither file shows up under plain `git status` at any point across the implement→review→
       ship run you just completed — confirm `gateflow-init`'s `.gitignore` (or this repo's own, if
-      dogfooding) actually excludes both paths; optionally confirm with `git status --ignored`, where
-      both should appear listed under "Ignored files:"
+      dogfooding) actually excludes both paths. Optionally confirm with `git status --ignored`: earlier
+      in the run (before ship deletes the plan file), both paths would have appeared listed under
+      "Ignored files:"; afterward only the review file still does — the plan file is gone, and a
+      deleted path can't appear under `--ignored`
 
 ## gateflow-docs
 

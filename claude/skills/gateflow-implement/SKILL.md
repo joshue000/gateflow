@@ -61,8 +61,10 @@ present the plan. HARD STOP:
 
 once approved, before Phase 4 starts:
   result = planning-jira.sh add-comment key --body-file docs/gateflow/plans/{key}-plan.md
-  if add-comment fails: stop — Phase 4 must not begin without a real plan_comment_id (gateflow-ship's
-    later deletion depends on it)
+  if add-comment fails: stop — Phase 4 must not begin without add-comment having succeeded
+    (gateflow-ship's later plan-file deletion trusts the plan's content is already safely persisted
+    in Jira; it never reads plan_comment_id itself — that id is only used within this same run, by
+    update-comment)
   plan_comment_id = result.id   # held for the rest of this run — never persisted to disk, never
                                  # re-derived from "the last comment" (a teammate could comment later)
   the local plan file stays on disk, uncommitted (docs/gateflow/plans/ is gitignored, assuming

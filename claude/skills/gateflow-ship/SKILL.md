@@ -69,10 +69,11 @@ if the PR was created (open-pr didn't fail):
     vcs-github.sh comment-pr result.number --body-file review_file   # full file, every round — not
       # just the latest — best-effort, never blocks shipping on failure
     # review_file is NOT deleted — it stays on disk; the user decides when to remove it (GTF-20)
-  if plan file docs/gateflow/plans/{key}-plan.md exists:
-    delete it   # its content already lives in the Jira comment gateflow-implement posted; by the time
-                # a PR is open nothing further will revise it
-    # if the delete fails: warn and keep going — cosmetic cleanup, never block a PR that's already open
+  if key is not null:
+    if plan file docs/gateflow/plans/{key}-plan.md exists:
+      delete it   # its content already lives in the Jira comment gateflow-implement posted; by the
+                  # time a PR is open nothing further will revise it
+      # if the delete fails: warn and keep going — cosmetic cleanup, never block a PR that's already open
 ```
 
 ## Phase 5 — Jira transition
@@ -90,7 +91,8 @@ if key is not null:
 print:
   - PR: {result.url}
   - Ticket: {key or "—"} -> in-review
-  - Plan file: removed (content preserved in Jira comment) | kept — delete failed, remove it manually
+  - Plan file: removed (content preserved in Jira comment) | kept — delete failed, remove it manually |
+    none found — nothing to remove
 next: "await reviewer activity, or run /gateflow-review again for Gate 2 once someone else reviews it"
 ```
 
