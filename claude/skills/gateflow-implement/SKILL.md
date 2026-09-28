@@ -137,4 +137,5 @@ next steps: "/gateflow-review to check this branch, then /gateflow-ship when rea
 | Scope expansion mid-Phase-4 | Stop, surface it, never silently proceed |
 | New build/lint warnings | Fix before committing — this is a hard gate, not advisory |
 | `add-comment` fails (Phase 3) | Stop, Phase 4 must not begin without a real plan_comment_id, and don't blindly retry: a comment may already exist on the ticket from the failed attempt, so check Jira before re-invoking add-comment — a retry could double-post |
+| `add-comment` fails (Phase 4 re-plan fresh-fallback) | Stop, surface it — the re-plan can't proceed without some Jira record of the current plan content |
 | `update-comment` fails (Phase 4 re-plan) | Stop, surface it, don't silently continue with a stale Jira copy of the plan |
