@@ -26,10 +26,10 @@ trusting the corresponding skill.
 - [ ] Plan doc is produced at `docs/gateflow/plans/<KEY>-plan.md`
 - [ ] The run genuinely halts at the approval gate — assert zero code written pre-approval
 - [ ] Post-approval, TDD commits land with conventional messages referencing the ticket key
-- [ ] (GTF-20) Right after approval, the plan's full content appears as a Jira comment on the ticket —
+- [ ] Right after approval, the plan's full content appears as a Jira comment on the ticket —
       not paraphrased, and `docs/gateflow/plans/<KEY>-plan.md` does not appear under plain `git status`
       (it's gitignored)
-- [ ] (GTF-20) Trigger a scope-growth re-plan mid-Phase-4 — the SAME Jira comment updates in place
+- [ ] Trigger a scope-growth re-plan mid-Phase-4 — the SAME Jira comment updates in place
       (same comment ID, new body) rather than a second comment appearing
 
 ## gateflow-review
@@ -45,12 +45,12 @@ trusting the corresponding skill.
 - [ ] Push succeeds
 - [ ] All four PR sections populate — spot-check the Test Plan section is verbatim, not paraphrased
 - [ ] Jira flips to the in-review status
-- [ ] (GTF-20) Right after the PR opens, the full local review file's content (all rounds) appears as
+- [ ] Right after the PR opens, the full local review file's content (all rounds) appears as
       a PR comment
-- [ ] (GTF-20) The local review file (`docs/gateflow/reviews/<KEY>-review.md`) still exists on disk
+- [ ] The local review file (`docs/gateflow/reviews/<KEY>-review.md`) still exists on disk
       afterward — untouched, not deleted
-- [ ] (GTF-20) The local plan file (`docs/gateflow/plans/<KEY>-plan.md`) is gone from disk afterward
-- [ ] (GTF-20) Neither file shows up under plain `git status` at any point across the implement→review→
+- [ ] The local plan file (`docs/gateflow/plans/<KEY>-plan.md`) is gone from disk afterward
+- [ ] Neither file shows up under plain `git status` at any point across the implement→review→
       ship run you just completed — confirm `gateflow-init`'s `.gitignore` (or this repo's own, if
       dogfooding) actually excludes both paths. Optionally confirm with `git status --ignored`: earlier
       in the run (before ship deletes the plan file), both paths would have appeared listed under
