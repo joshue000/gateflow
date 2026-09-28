@@ -4,6 +4,10 @@ Things deliberately NOT built into MVP v1, with the reasoning for deferring — 
 these later starts from "here's why we said not yet," not from scratch. Nothing here is forgotten by
 being absent from the code; if it's not on this list, it wasn't considered, not just left out.
 
+An entry moves to `## Done` at the end of this file once its ticket is actually resolved (or the idea
+is otherwise confirmed obsolete) — see CLAUDE.md's Deferred-work rule for the `**Tracked as:** GTF-N`
+convention that precedes the move. Never deleted, only moved.
+
 ## Requirements fallback when `sdd-*` isn't installed
 
 `gateflow-plan create-from-sdd` depends on a file shape (`requirements-artifact-contract.md`), not on
@@ -134,7 +138,7 @@ Logged here first per the Deferred-work rule so the direction isn't lost before 
 
 ## Done
 
-### gateflow-ship's SHA-match check can't survive its own review-file bookkeeping commit — obsoleted by GTF-20
+## gateflow-ship's SHA-match check can't survive its own review-file bookkeeping commit — obsoleted by GTF-20
 
 **Tracked as:** GTF-20
 
