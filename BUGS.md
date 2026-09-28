@@ -83,9 +83,15 @@ consecutive clean rounds, same HEAD SHA) was tracked in conversation instead of 
 `gateflow-implement`/`gateflow-review`/`gateflow-ship`'s SKILL.md files, this stops being a workaround
 and becomes the documented default — no separate fix needed here beyond that feature landing.
 
-**Status**: unresolved, blocked on the pending feature request (tracked separately, not in this file —
-see the `gateflow-fb` session/conversation for the drafted prompt). Not re-logging the feature request
-itself here since it's a design decision already made and handed off, not an anomaly of unclear cause.
+**Update (GTF-20, this repo)**: the feature has since landed in code — `122234a` (post plan as a Jira
+comment in `gateflow-implement` Phase 3) and `2668509` (post review as PR comment and delete plan file
+in `gateflow-ship`), with follow-up hardening in `6fd748b`, `44cc539`, `4676cc2`, `837318c`. All three
+SKILL.md files now document the non-committed persistence path directly — this stops being a workaround
+gap as of these commits.
+
+**Status**: implemented in code as of the commits above. Still **Open**: `test/e2e-checklist.md`'s
+gateflow-implement/gateflow-review/gateflow-ship sections covering this design are entirely unchecked,
+so live confirmation is still pending — not flipping to Resolved until that e2e pass happens.
 
 ### Batch-created Jira tickets can have summary/description desynced by one item
 
@@ -237,8 +243,15 @@ interim fix: gateflow-ship's Phase 1 SHA check could special-case "HEAD's only n
 locked SHA touches solely the review file itself" as an automatic pass, rather than requiring manual
 override every time.
 
-**Status**: unresolved, expected to be structurally fixed by GTF-20; the narrower interim fix is not
-implemented.
+**Status**: code-level fix landed — `2668509` (feat: post review as PR comment and delete plan file in
+gateflow-ship) stopped committing the review file at all, and `44cc539`/`4676cc2` gitignored
+`docs/gateflow/reviews/` and untracked the two review files that were already committed under the old
+design. `gateflow-ship`'s current Phase 1 + Phase 4 (re-checked directly) never commit or delete the
+review file, so there's no SHA left to chase — this bug's scenario is now structurally impossible in
+code, not just planned to be. Still **Open**: `test/e2e-checklist.md`'s gateflow-ship section (the
+review-file-persists-on-disk / plan-file-deleted / neither-file-under-`git status` checks) is entirely
+unchecked, so this hasn't been confirmed live yet. The narrower interim fix described above is now moot
+and was never implemented (not needed, since the structural fix landed instead).
 
 ### `transition-to` short-circuits on statusCategory match even when the target is a genuinely different status
 

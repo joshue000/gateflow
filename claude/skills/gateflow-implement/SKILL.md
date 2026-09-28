@@ -99,9 +99,16 @@ if work grows beyond the approved plan's scope:
   options: approve the expansion (re-plan) | defer to a follow-up ticket | abort
   never silently expand scope
   if re-planned: update the local plan file, then
-    planning-jira.sh update-comment key --id plan_comment_id --body-file docs/gateflow/plans/{key}-plan.md
-    (same comment stays current — never a second, orphaning-the-first comment)
-    if update-comment fails: stop — surface it, don't silently continue with a stale Jira copy of the plan
+    if plan_comment_id is unset (a resumed session — post-/clear or lossy auto-compaction dropped the
+      in-memory value from Phase 3): search the ticket's comments for one authored this run whose body
+      matches the prior plan file's content, and use its id in place of plan_comment_id
+      if none found: fall back to a fresh add-comment key --body-file docs/gateflow/plans/{key}-plan.md
+        (accepting a possible duplicate comment as the least-bad outcome) and warn the user a duplicate
+        plan comment may now exist on the ticket
+      else:
+        planning-jira.sh update-comment key --id plan_comment_id --body-file docs/gateflow/plans/{key}-plan.md
+        (same comment stays current — never a second, orphaning-the-first comment)
+        if update-comment fails: stop — surface it, don't silently continue with a stale Jira copy of the plan
 ```
 
 ## End

@@ -68,7 +68,7 @@ if the PR was created (open-pr didn't fail):
   if review_file exists:
     vcs-github.sh comment-pr result.number --body-file review_file   # full file, every round — not
       # just the latest — best-effort, never blocks shipping on failure
-    # review_file is NOT deleted — it stays on disk; the user decides when to remove it (GTF-20)
+    # review_file is NOT deleted — it stays on disk; the user decides when to remove it
   if key is not null:
     if plan file docs/gateflow/plans/{key}-plan.md exists:
       delete it   # its content already lives in the Jira comment gateflow-implement posted; by the
@@ -106,6 +106,6 @@ next: "await reviewer activity, or run /gateflow-review again for Gate 2 once so
 | Gate 1 not locked, no override logged | Stop — this is the hard gate, never bypassed silently |
 | Review SHA stale vs. HEAD | Stop, ask to re-review |
 | `open-pr` fails | Stop, print the adapter's exact error |
-| Review-file PR comment fails | Warn, keep going — best-effort, never blocks a PR that's already open (GTF-20) |
+| Review-file PR comment fails | Warn, keep going — best-effort, never blocks a PR that's already open |
 | Plan-file delete fails | Warn, keep going — cosmetic cleanup, don't block a PR that's already open |
 | Jira transition fails | Warn + print manual command, PR still stands — don't roll back a successful PR over this |

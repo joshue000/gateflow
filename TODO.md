@@ -72,21 +72,18 @@ override with its reason in `docs/gateflow/reviews/*.md`. If overrides start con
 generated PE's findings specifically — a real, free-to-observe pattern in data already being captured,
 no new instrumentation needed — that's the signal its judgment isn't well-calibrated for that stack.
 
-## gateflow-ship's SHA-match check can't survive its own review-file bookkeeping commit
+## gateflow-ship's SHA-match check can't survive its own review-file bookkeeping commit — obsoleted by GTF-20
 
-`gateflow-ship`'s Phase 1 requires `latest.sha == current HEAD` in the review file's last round. But
-recording that round (or logging a Gate 1 override) is itself a commit — the moment you commit the
-round/override entry, HEAD moves past the SHA the entry names, permanently. There's no way to make a
-commit's own content correctly cite its own future hash. Hit live on GTF-21: the override-logging commit
-(`6c20bf3`) immediately invalidated its own round's `SHA: 579e473` field relative to true HEAD.
+Originally logged because recording a review round (or a Gate 1 override) was itself a commit to
+`docs/gateflow/reviews/{key}-review.md`, so HEAD always moved past the SHA that round named — hit live
+on GTF-21, where the override-logging commit (`6c20bf3`) immediately invalidated its own round's
+`SHA: 579e473` field relative to true HEAD.
 
-**Idea**: `gateflow-ship` Phase 1 should treat commits touching only `docs/gateflow/reviews/**` (the
-review file itself) as not invalidating the SHA match — i.e., diff `HEAD` against `latest.sha` and check
-whether every file in that diff is the review file itself, not a strict hash equality.
-
-**Why not now**: out of GTF-21's scope, and `gateflow-ship/SKILL.md` is an ordinary review-gated file
-(not self-amendment-protected, per `CLAUDE.md`'s own split), so this doesn't need governance-log
-authorization the way the hook's changes did — just its own small ticket, not a drive-by fix here.
+**Why this no longer applies**: GTF-20 (this repo) removed the premise — `gateflow-ship`'s Phase 4 no
+longer commits the review file at all; it posts the round content as a PR comment and leaves the file
+on disk, gitignored (`2668509`, `44cc539`, `4676cc2`). With no review-file commit ever landing, there's
+no SHA left for HEAD to move past, so the scenario this idea was meant to work around can't occur.
+No fix needed.
 
 ## Enforce the round-closing hash-backfill check in gateflow-review
 

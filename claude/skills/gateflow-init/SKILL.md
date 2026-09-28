@@ -145,7 +145,7 @@ write .gateflow/config.json
 ```
 lines_to_add = ["docs/gateflow/plans/", "docs/gateflow/reviews/"]
   # gateflow-implement's plan and gateflow-review's review docs are working files persisted as a
-  # Jira/PR comment instead (GTF-20) — never meant to be committed
+  # Jira/PR comment instead — never meant to be committed
 
 if .gitignore exists at the project root:
   append only the lines from lines_to_add that aren't already present (exact-line match) —
