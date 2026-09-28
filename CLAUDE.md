@@ -13,6 +13,11 @@ thing. If it's unclear whether something rises to that level, ask rather than si
 future session — looking at just the repo (a fresh clone, another machine). A decision that only lives
 in chat history is a decision that gets re-litigated from scratch the next time it comes up.
 
+**Convention**: once a deferred idea lands a real Jira ticket, add `**Tracked as:** GTF-N` right after
+its heading in `TODO.md`, then move the whole entry (unchanged body) under a `## Done` section at the
+end of the file — never delete it. This is how a reader (or a future session) tells "still deferred"
+apart from "already resolved" without cross-checking Jira.
+
 ## Dogfooding rule
 
 `fastender` is gateflow's own guinea-pig project — real usage, not a test fixture. Whenever something
@@ -24,6 +29,10 @@ than a bug that only exists in that session's chat history and gets forgotten.
 **Why**: same reasoning as the deferred-work rule above — a finding that only lives in engram or chat
 history is invisible to a fresh session or another machine, and gets silently re-discovered (or missed)
 next time.
+
+**Convention**: once a logged bug lands a real Jira ticket, add `**Tracked as:** GTF-N` right after its
+heading in `BUGS.md`, before the `**Where found**` field — the entry stays in place and keeps moving
+through the existing Open → Resolved convention, citing the fix commit when it closes.
 
 ## Security posture — deliberate, not incidental
 
