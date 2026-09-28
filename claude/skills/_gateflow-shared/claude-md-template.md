@@ -26,7 +26,7 @@ is worse than one place being briefly wrong.
 ## Reporting gateflow bugs
 
 If something about `gateflow` itself misbehaves while working in this repo — not a bug in this
-project's own code — don't patch it locally: file it at
+project's own code — don't patch gateflow locally: file the bug at
 https://github.com/joshue000/gateflow/issues so the fix lands upstream for every project using it.
 
 ## Engineering Principles
