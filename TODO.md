@@ -72,19 +72,6 @@ override with its reason in `docs/gateflow/reviews/*.md`. If overrides start con
 generated PE's findings specifically — a real, free-to-observe pattern in data already being captured,
 no new instrumentation needed — that's the signal its judgment isn't well-calibrated for that stack.
 
-## gateflow-ship's SHA-match check can't survive its own review-file bookkeeping commit — obsoleted by GTF-20
-
-Originally logged because recording a review round (or a Gate 1 override) was itself a commit to
-`docs/gateflow/reviews/{key}-review.md`, so HEAD always moved past the SHA that round named — hit live
-on GTF-21, where the override-logging commit (`6c20bf3`) immediately invalidated its own round's
-`SHA: 579e473` field relative to true HEAD.
-
-**Why this no longer applies**: GTF-20 (this repo) removed the premise — `gateflow-ship`'s Phase 4 no
-longer commits the review file at all; it posts the round content as a PR comment and leaves the file
-on disk, gitignored (`2668509`, `44cc539`, `4676cc2`). With no review-file commit ever landing, there's
-no SHA left for HEAD to move past, so the scenario this idea was meant to work around can't occur.
-No fix needed.
-
 ## Enforce the round-closing hash-backfill check in gateflow-review
 
 GTF-21's dogfooding run surfaced a recurring pattern (4 occurrences across one ticket): a
@@ -144,3 +131,20 @@ and explicit TRIVIAL/STANDARD/DEEP overrides available.
 (see CLAUDE.md's Security posture section) — a change needs the repo owner's explicit, standalone
 sign-off on that specific change, never inferred from a general "yes, add the banner" in conversation.
 Logged here first per the Deferred-work rule so the direction isn't lost before that sign-off is given.
+
+## Done
+
+### gateflow-ship's SHA-match check can't survive its own review-file bookkeeping commit — obsoleted by GTF-20
+
+**Tracked as:** GTF-20
+
+Originally logged because recording a review round (or a Gate 1 override) was itself a commit to
+`docs/gateflow/reviews/{key}-review.md`, so HEAD always moved past the SHA that round named — hit live
+on GTF-21, where the override-logging commit (`6c20bf3`) immediately invalidated its own round's
+`SHA: 579e473` field relative to true HEAD.
+
+**Why this no longer applies**: GTF-20 (this repo) removed the premise — `gateflow-ship`'s Phase 4 no
+longer commits the review file at all; it posts the round content as a PR comment and leaves the file
+on disk, gitignored (`2668509`, `44cc539`, `4676cc2`). With no review-file commit ever landing, there's
+no SHA left for HEAD to move past, so the scenario this idea was meant to work around can't occur.
+No fix needed.
