@@ -7,8 +7,9 @@ being absent from the code; if it's not on this list, it wasn't considered, not 
 An entry moves under `## Done` at the end of this file once its ticket is actually resolved (or the
 idea is otherwise confirmed obsolete) — see CLAUDE.md's Deferred-work rule for the `**Tracked as:**
 GTF-N` convention that precedes the move, and the `**Built via:** GTF-N (commit <hash>)` line that
-replaces it once an entry lands here. Never deleted, only moved. `## Done` is a section divider,
-not an entry itself, even though entries beneath it share its heading level.
+replaces it once an entry lands here — or, if the idea never lands a ticket at all, a
+`**Obsolete:** <reason, date>` note instead. Never deleted, only moved. `## Done` is a section
+divider, not an entry itself, even though entries beneath it share its heading level.
 
 ## Requirements fallback when `sdd-*` isn't installed
 
