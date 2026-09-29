@@ -15,10 +15,12 @@ in chat history is a decision that gets re-litigated from scratch the next time 
 
 **Convention**: once a deferred idea lands a real Jira ticket, add `**Tracked as:** GTF-N` right after
 its heading in `TODO.md` — the entry stays where it is while the ticket is open. Once the ticket is
-actually resolved (or the idea is otherwise confirmed obsolete), move the whole entry (unchanged body)
-under a `## Done` section at the end of the file, replacing `**Tracked as:** GTF-N` with `**Built via:**
-GTF-N (commit <hash>)` — never delete it. This is how a reader (or a future session) tells "still
-deferred," "ticketed but still open," and "already resolved" apart without cross-checking Jira.
+actually resolved, move the whole entry (unchanged body) under a `## Done` section at the end of the
+file, replacing `**Tracked as:** GTF-N` with `**Built via:** GTF-N (commit <hash>)`. If instead the
+idea is confirmed obsolete without ever landing a ticket, move it the same way but add a one-line
+`**Obsolete:** <reason, date>` note in place of a Tracked-as/Built-via line — never delete it either
+way. This is how a reader (or a future session) tells "still deferred," "ticketed but still open,"
+"resolved," and "obsolete" apart without cross-checking Jira.
 
 ## Dogfooding rule
 
