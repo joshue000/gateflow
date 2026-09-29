@@ -29,9 +29,9 @@ If something about `gateflow` itself misbehaves while working in this repo — n
 project's own code — don't patch gateflow locally: file the bug at
 https://github.com/joshue000/gateflow/issues so the fix lands upstream for every project using it.
 
-This applies to every consumer project — except gateflow's own dogfood project, which instead follows
-gateflow's own `CLAUDE.md` Dogfooding rule and logs findings directly into gateflow's `BUGS.md` rather
-than GitHub Issues.
+This applies to every consumer project. If this project is currently gateflow's own dogfood/testing
+ground for gateflow itself (gateflow's own CLAUDE.md names it as such under its Dogfooding rule),
+follow that rule instead: log findings directly into gateflow's own BUGS.md rather than GitHub Issues.
 
 ## Engineering Principles
 
