@@ -4,7 +4,17 @@ Things deliberately NOT built into MVP v1, with the reasoning for deferring — 
 these later starts from "here's why we said not yet," not from scratch. Nothing here is forgotten by
 being absent from the code; if it's not on this list, it wasn't considered, not just left out.
 
+An entry moves under `## Done` at the end of this file once its ticket is actually resolved (or the
+idea is otherwise confirmed obsolete) — see CLAUDE.md's Deferred-work rule for the `**Tracked as:**
+GTF-N` convention that precedes the move, and the `**Built via:** GTF-N (commit <hash>)` line that
+replaces it once an entry lands here — or, if the idea is confirmed obsolete instead (whether or not
+it ever landed a ticket), a `**Obsolete:** <reason, date>` note (citing the ticket key in the reason
+if one existed). Never deleted, only moved. `## Done` is a section divider, not an entry itself, even
+though entries beneath it share its heading level.
+
 ## Requirements fallback when `sdd-*` isn't installed
+
+**Tracked as:** GTF-11
 
 `gateflow-plan create-from-sdd` depends on a file shape (`requirements-artifact-contract.md`), not on
 the `sdd-*` skill family specifically — but without `sdd-*`, producing a good `proposal.md`/`tasks.md`
@@ -21,6 +31,8 @@ has, at the cost of real complexity today. Revisit if/when gateflow is ever used
 
 ## AGENTS.md compatibility
 
+**Tracked as:** GTF-12
+
 `AGENTS.md` is an open, cross-tool convention for repo-level agent governance (formalized August 2025,
 OpenAI-led with Google/Cursor/Factory participation) — other AI coding tools read it the way Claude Code
 reads `CLAUDE.md`. `claude-md-template.md` could ship both files (or one that satisfies both) so a
@@ -30,6 +42,8 @@ gateflow-bootstrapped project isn't Claude-Code-only.
 Revisit if gateflow (or a project using it) is ever worked on with a different AI coding tool.
 
 ## Other backends (adapter contracts already support adding these — see architecture.md)
+
+**Tracked as:** GTF-13
 
 - **Notion / Obsidian** planning adapters (alternative to Jira)
 - **Bitbucket / GitLab** VCS adapter (alternative to GitHub)
@@ -44,11 +58,15 @@ prove the seam works before widening it. Adding a second backend on either side 
 
 ## Team-routing / multi-reviewer roster resolution
 
+**Tracked as:** GTF-14
+
 Not needed for a solo project — `reviewers` in config is a plain list, no algorithm needed. Revisit only
 if a project actually gains collaborators and reviewer assignment needs real logic (whole-team / specific
 engineers / cross-team supporters — a pattern seen in similar internal tooling elsewhere).
 
 ## Worktree isolation for concurrent reviews
+
+**Tracked as:** GTF-15
 
 Confirmed (while researching `sdlc`'s reference material) that this mechanism is fully host-agnostic —
 sibling hidden git-worktree directory, reuse-detect via `git worktree list --porcelain`, fall back to
@@ -56,6 +74,8 @@ in-place on failure. Cheap to add later. Deferred because nothing today runs con
 repo.
 
 ## Verification loop for generated PE agents
+
+**Tracked as:** GTF-16
 
 `gateflow-init`/`add-pe` generates a new PE from `pe-agent-template.md` grounded in real project files
 when available — but unlike the Jira status check (verified against a live throwaway ticket), a
@@ -71,19 +91,6 @@ file.
 override with its reason in `docs/gateflow/reviews/*.md`. If overrides start concentrating on one
 generated PE's findings specifically — a real, free-to-observe pattern in data already being captured,
 no new instrumentation needed — that's the signal its judgment isn't well-calibrated for that stack.
-
-## gateflow-ship's SHA-match check can't survive its own review-file bookkeeping commit — obsoleted by GTF-20
-
-Originally logged because recording a review round (or a Gate 1 override) was itself a commit to
-`docs/gateflow/reviews/{key}-review.md`, so HEAD always moved past the SHA that round named — hit live
-on GTF-21, where the override-logging commit (`6c20bf3`) immediately invalidated its own round's
-`SHA: 579e473` field relative to true HEAD.
-
-**Why this no longer applies**: GTF-20 (this repo) removed the premise — `gateflow-ship`'s Phase 4 no
-longer commits the review file at all; it posts the round content as a PR comment and leaves the file
-on disk, gitignored (`2668509`, `44cc539`, `4676cc2`). With no review-file commit ever landing, there's
-no SHA left for HEAD to move past, so the scenario this idea was meant to work around can't occur.
-No fix needed.
 
 ## Enforce the round-closing hash-backfill check in gateflow-review
 
@@ -106,6 +113,8 @@ its own dedicated authorization, not a drive-by fix bundled into an already-long
 own small ticket; the fix itself is a few lines in Phase 7.
 
 ## Size-tiered multi-explorer/multi-architect planning fan-out
+
+**Tracked as:** GTF-17
 
 `sdlc:implement`'s planning-playbook scales its scout→plan pipeline by ticket size (more explorer/
 architect agents for XL tickets). `gateflow-implement` currently does a single-pass scout+plan for
@@ -144,3 +153,20 @@ and explicit TRIVIAL/STANDARD/DEEP overrides available.
 (see CLAUDE.md's Security posture section) — a change needs the repo owner's explicit, standalone
 sign-off on that specific change, never inferred from a general "yes, add the banner" in conversation.
 Logged here first per the Deferred-work rule so the direction isn't lost before that sign-off is given.
+
+## Done
+
+## gateflow-ship's SHA-match check can't survive its own review-file bookkeeping commit — obsoleted by GTF-20
+
+**Built via:** GTF-20 (commit 4676cc2)
+
+Originally logged because recording a review round (or a Gate 1 override) was itself a commit to
+`docs/gateflow/reviews/{key}-review.md`, so HEAD always moved past the SHA that round named — hit live
+on GTF-21, where the override-logging commit (`6c20bf3`) immediately invalidated its own round's
+`SHA: 579e473` field relative to true HEAD.
+
+**Why this no longer applies**: GTF-20 (this repo) removed the premise — `gateflow-ship`'s Phase 4 no
+longer commits the review file at all; it posts the round content as a PR comment and leaves the file
+on disk, gitignored (`2668509`, `44cc539`, `4676cc2`). With no review-file commit ever landing, there's
+no SHA left for HEAD to move past, so the scenario this idea was meant to work around can't occur.
+No fix needed.
